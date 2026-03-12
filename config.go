@@ -101,27 +101,20 @@ func validateOverrides(exp Experiment) error {
 	return nil
 }
 
-var variantValidators = []func(Experiment) error{
-	validateVariantsNotEmpty,
-	validateVariantName,
-	validateVariantWeight,
-	validateUniqueVariants,
-}
-
 func validateVariants(exp Experiment) error {
-	for _, validate := range variantValidators {
-		if err := validate(exp); err != nil {
-			return err
-		}
+	if err := validateVariantsNotEmpty(exp); err != nil {
+		return err
+	}
+	if err := validateVariantName(exp); err != nil {
+		return err
+	}
+	if err := validateVariantWeight(exp); err != nil {
+		return err
+	}
+	if err := validateUniqueVariants(exp); err != nil {
+		return err
 	}
 	return nil
-}
-
-var experimentValidators = []func(Experiment) error{
-	validateSlug,
-	validateStatus,
-	validateVariants,
-	validateOverrides,
 }
 
 func validateUniqueSlugs(exps []Experiment) error {
@@ -140,10 +133,17 @@ func validateExperiments(exps []Experiment) error {
 		return err
 	}
 	for _, exp := range exps {
-		for _, validate := range experimentValidators {
-			if err := validate(exp); err != nil {
-				return err
-			}
+		if err := validateSlug(exp); err != nil {
+			return err
+		}
+		if err := validateStatus(exp); err != nil {
+			return err
+		}
+		if err := validateVariants(exp); err != nil {
+			return err
+		}
+		if err := validateOverrides(exp); err != nil {
+			return err
 		}
 	}
 	return nil
