@@ -9,16 +9,16 @@ import (
 
 func TestHealthHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	rec := httptest.NewRecorder()
+	w := httptest.NewRecorder()
 
-	healthHandler(rec, req)
+	healthHandler(w, req)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", rec.Code)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 
 	var body map[string]string
-	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
 		t.Fatalf("invalid json: %v", err)
 	}
 	if body["status"] != "ok" {
