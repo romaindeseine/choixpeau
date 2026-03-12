@@ -1,0 +1,27 @@
+experiments:
+  - slug: checkout-redesign
+    status: running
+    variants:
+      - name: control
+        weight: 50
+      - name: new_checkout
+        weight: 50
+    overrides:
+      user-42: new_checkout
+
+  - slug: onboarding-flow
+    status: draft
+    seed: onboarding-v2
+    variants:
+      - name: classic
+        weight: 70
+      - name: streamlined
+        weight: 30
+
+  - slug: old-pricing
+    status: stopped
+    variants:
+      - name: monthly
+        weight: 50
+      - name: annual
+        weight: 50
