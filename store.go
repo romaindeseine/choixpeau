@@ -8,7 +8,7 @@ type memStore struct {
 	experiments map[string]Experiment
 }
 
-func newMemStore(experiments ...Experiment) *memStore {
+func newMemStore(experiments []Experiment) *memStore {
 	m := &memStore{experiments: make(map[string]Experiment, len(experiments))}
 	for _, exp := range experiments {
 		m.experiments[exp.Slug] = exp

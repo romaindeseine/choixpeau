@@ -5,7 +5,7 @@ Minimalist A/B cohort assignment API, written in Go.
 ## Conventions
 
 - Codebase language: English (code, comments, commits, docs)
-- Go standard library only — no framework
+- Go standard library only — no framework (exception: `gopkg.in/yaml.v3` for YAML config)
 - Flat file architecture: all Go source files live at the root in `package main` — no sub-packages
 - Format with `gofmt`
 
@@ -43,15 +43,21 @@ Flat layout — all Go files at the root in `package main`, one file per respons
 - `store.go` — ReadStore interface and in-memory implementation
 - `hash.go` — MurmurHash3 32-bit implementation
 - `engine.go` — assignment engine (lookup, overrides, hash-based variant selection)
+- `config.go` — YAML config loading and experiment validation
 
 ## Build & Run
 
 ```bash
 go build -o choixpeau .
-./choixpeau
+PORT=8080 CONFIG_PATH=experiments.example.yaml ./choixpeau
 ```
 
 Server listens on `:8080`.
+
+### Environment variables
+
+- `PORT` — server port (default: `8080`)
+- `CONFIG_PATH` — path to YAML config file (default: `experiments.yaml`)
 
 ## Tests
 

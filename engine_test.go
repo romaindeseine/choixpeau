@@ -28,53 +28,53 @@ func TestEngineAssign(t *testing.T) {
 	}{
 		{
 			name:    "experiment not found",
-			store:   newMemStore(),
+			store:   newMemStore(nil),
 			slug:    "unknown",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotFound,
 		},
 		{
 			name: "experiment is draft",
-			store: newMemStore(Experiment{
+			store: newMemStore([]Experiment{{
 				Slug:     "draft-exp",
 				Status:   StatusDraft,
 				Variants: []Variant{{Name: "control", Weight: 100}},
-			}),
+			}}),
 			slug:    "draft-exp",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotRunning,
 		},
 		{
 			name: "experiment is paused",
-			store: newMemStore(Experiment{
+			store: newMemStore([]Experiment{{
 				Slug:     "paused-exp",
 				Status:   StatusPaused,
 				Variants: []Variant{{Name: "control", Weight: 100}},
-			}),
+			}}),
 			slug:    "paused-exp",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotRunning,
 		},
 		{
 			name: "experiment is stopped",
-			store: newMemStore(Experiment{
+			store: newMemStore([]Experiment{{
 				Slug:     "stopped-exp",
 				Status:   StatusStopped,
 				Variants: []Variant{{Name: "control", Weight: 100}},
-			}),
+			}}),
 			slug:    "stopped-exp",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotRunning,
 		},
 		{
 			name: "override hit",
-			store: newMemStore(Experiment{
+			store: newMemStore([]Experiment{{
 				Slug:      "override-exp",
 				Seed:      "override-exp",
 				Status:    StatusRunning,
 				Variants:  []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 				Overrides: map[string]string{"user-42": "treatment"},
-			}),
+			}}),
 			slug:       "override-exp",
 			userID:     "user-42",
 			want:       Assignment{Experiment: "override-exp", Variant: "treatment", UserID: "user-42"},
@@ -82,7 +82,7 @@ func TestEngineAssign(t *testing.T) {
 		},
 		{
 			name:       "single variant always assigned",
-			store:      newMemStore(Experiment{Slug: "single", Seed: "single", Status: StatusRunning, Variants: []Variant{{Name: "only", Weight: 100}}}),
+			store:      newMemStore([]Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, Variants: []Variant{{Name: "only", Weight: 100}}}}),
 			slug:       "single",
 			userID:     "user-1",
 			want:       Assignment{Experiment: "single", Variant: "only", UserID: "user-1"},
@@ -90,7 +90,7 @@ func TestEngineAssign(t *testing.T) {
 		},
 		{
 			name:  "basic assignment returns valid variant",
-			store: newMemStore(runningExp),
+			store: newMemStore([]Experiment{runningExp}),
 			slug:  "exp-1",
 			// This user ID produces a known assignment via murmur3
 			userID: "user-1",
@@ -129,12 +129,12 @@ func TestEngineAssign(t *testing.T) {
 }
 
 func TestEngineAssignDeterminism(t *testing.T) {
-	store := newMemStore(Experiment{
+	store := newMemStore([]Experiment{{
 		Slug:     "det-exp",
 		Seed:     "det-exp",
 		Status:   StatusRunning,
 		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
-	})
+	}})
 	e := NewEngine(store)
 
 	first, err := e.Assign("det-exp", "user-123")
@@ -154,12 +154,12 @@ func TestEngineAssignDeterminism(t *testing.T) {
 }
 
 func TestEngineAssignDistribution(t *testing.T) {
-	store := newMemStore(Experiment{
+	store := newMemStore([]Experiment{{
 		Slug:     "dist-exp",
 		Seed:     "dist-exp",
 		Status:   StatusRunning,
 		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-	})
+	}})
 	e := NewEngine(store)
 
 	counts := map[string]int{}
@@ -191,8 +191,8 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 	expWithSeed := baseExp
 	expWithSeed.Seed = "different-seed"
 
-	e1 := NewEngine(newMemStore(baseExp))
-	e2 := NewEngine(newMemStore(expWithSeed))
+	e1 := NewEngine(newMemStore([]Experiment{baseExp}))
+	e2 := NewEngine(newMemStore([]Experiment{expWithSeed}))
 
 	// Collect assignments for many users; with a different seed
 	// at least some users should get different variants.

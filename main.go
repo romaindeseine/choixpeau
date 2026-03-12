@@ -29,7 +29,8 @@ type Server struct {
 	engine Engine
 }
 
-func newServer(addr string, store ReadStore) *Server {
+func newServer(addr string, experiments []Experiment) *Server {
+	store := newMemStore(experiments)
 	return &Server{
 		Addr:   addr,
 		store:  store,
@@ -80,7 +81,19 @@ func main() {
 		slog.Warn("⚠️ PORT not set, using default", "port", "8080")
 	}
 
-	server := newServer(addr, newMemStore())
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "experiments.yaml"
+	}
+
+	experiments, err := loadExperiments(configPath)
+	if err != nil {
+		slog.Error("❌ failed to load config", "path", configPath, "error", err)
+		os.Exit(1)
+	}
+	slog.Info("✅ loaded experiments", "count", len(experiments), "path", configPath)
+
+	server := newServer(addr, experiments)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
