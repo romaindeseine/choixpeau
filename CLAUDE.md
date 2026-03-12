@@ -20,6 +20,10 @@ Minimalist A/B cohort assignment API, written in Go.
 - Log HTTP requests and errors
 - Emojis only for lifecycle logs: 🚀 startup, ✅ connected, ⚠️ fallback, ❌ fatal
 
+### Testing
+
+- Table-driven tests: group related cases in a single `Test*` function using a `[]struct` slice and `t.Run`
+
 ## Domain vocabulary
 
 - **Experiment** — an A/B test identified by a unique `slug`. Has a status (`draft` → `running` → `paused` → `stopped`), a list of variants, and optional overrides.
