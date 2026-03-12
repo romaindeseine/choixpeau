@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -21,14 +22,54 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, HealthResponse{Status: "ok"})
 }
 
+type Server struct {
+	Addr   string
+	engine Engine
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
+	experimentSlug := r.URL.Query().Get("experiment")
+	if experimentSlug == "" {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "missing required parameter: experiment"})
+		return
+	}
+
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "missing required parameter: user_id"})
+		return
+	}
+
+	assignment, err := s.engine.Assign(experimentSlug, userID)
+	if err != nil {
+		slog.Error("assignment failed", "experiment", experimentSlug, "user_id", userID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, assignment)
+}
+
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
+	server := &Server{}
+	server.Addr = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	if server.Addr == ":" {
+		server.Addr = ":8080"
+		slog.Warn("⚠️ PORT not set, using default", "port", "8080")
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /api/v1/assign", server.assignHandler)
 
-	slog.Info("🚀 starting server", "addr", ":8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	slog.Info("🚀 starting server", "addr", server.Addr)
+	if err := http.ListenAndServe(server.Addr, mux); err != nil {
 		slog.Error("❌ server failed", "error", err)
 		os.Exit(1)
 	}
