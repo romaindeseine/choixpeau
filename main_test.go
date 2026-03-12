@@ -68,6 +68,20 @@ func TestAssignHandler(t *testing.T) {
 			wantBody:   jsonBody{"error": "missing required parameter: user_id"},
 		},
 		{
+			name:       "experiment not found",
+			query:      "experiment=unknown&user_id=u_123",
+			engine:     &mockEngine{err: ErrExperimentNotFound},
+			wantStatus: http.StatusNotFound,
+			wantBody:   jsonBody{"error": "experiment not found"},
+		},
+		{
+			name:       "experiment not running",
+			query:      "experiment=checkout-redesign&user_id=u_123",
+			engine:     &mockEngine{err: ErrExperimentNotRunning},
+			wantStatus: http.StatusConflict,
+			wantBody:   jsonBody{"error": "experiment not running"},
+		},
+		{
 			name:       "engine error",
 			query:      "experiment=checkout-redesign&user_id=u_123",
 			engine:     &mockEngine{err: errors.New("something went wrong")},

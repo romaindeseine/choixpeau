@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -24,7 +25,16 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 type Server struct {
 	Addr   string
+	store  ReadStore
 	engine Engine
+}
+
+func newServer(addr string, store ReadStore) *Server {
+	return &Server{
+		Addr:   addr,
+		store:  store,
+		engine: NewEngine(store),
+	}
 }
 
 type ErrorResponse struct {
@@ -46,8 +56,15 @@ func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 
 	assignment, err := s.engine.Assign(experimentSlug, userID)
 	if err != nil {
-		slog.Error("assignment failed", "experiment", experimentSlug, "user_id", userID, "error", err)
-		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		switch {
+		case errors.Is(err, ErrExperimentNotFound):
+			writeJSON(w, http.StatusNotFound, ErrorResponse{Error: "experiment not found"})
+		case errors.Is(err, ErrExperimentNotRunning):
+			writeJSON(w, http.StatusConflict, ErrorResponse{Error: "experiment not running"})
+		default:
+			slog.Error("assignment failed", "experiment", experimentSlug, "user_id", userID, "error", err)
+			writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		}
 		return
 	}
 
@@ -57,12 +74,13 @@ func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
-	server := &Server{}
-	server.Addr = fmt.Sprintf(":%s", os.Getenv("PORT"))
-	if server.Addr == ":" {
-		server.Addr = ":8080"
+	addr := fmt.Sprintf(":%s", os.Getenv("PORT"))
+	if addr == ":" {
+		addr = ":8080"
 		slog.Warn("⚠️ PORT not set, using default", "port", "8080")
 	}
+
+	server := newServer(addr, newMemStore())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)

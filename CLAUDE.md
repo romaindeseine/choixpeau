@@ -7,6 +7,7 @@ Minimalist A/B cohort assignment API, written in Go.
 - Codebase language: English (code, comments, commits, docs)
 - Go standard library only — no framework
 - Flat file architecture: all Go source files live at the root in `package main` — no sub-packages
+- Format with `gofmt`
 
 ### Error handling
 
@@ -37,7 +38,11 @@ Minimalist A/B cohort assignment API, written in Go.
 Flat layout — all Go files at the root in `package main`, one file per responsibility:
 
 - `main.go` — entrypoint, HTTP server, handlers
-- `model.go` — domain structs (Experiment, Variant, Assignment)
+- `model.go` — domain structs (Experiment, Variant, Assignment) and Engine interface
+- `errors.go` — sentinel errors
+- `store.go` — ReadStore interface and in-memory implementation
+- `hash.go` — MurmurHash3 32-bit implementation
+- `engine.go` — assignment engine (lookup, overrides, hash-based variant selection)
 
 ## Build & Run
 
