@@ -31,3 +31,7 @@ type Assignment struct {
 	Variant    string `json:"variant"`
 	UserID     string `json:"user_id"`
 }
+
+type Engine interface {
+	Assign(experimentSlug string, userID string) (Assignment, error)
+}
