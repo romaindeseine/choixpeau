@@ -5,7 +5,7 @@ Minimalist A/B cohort assignment API, written in Go.
 ## Conventions
 
 - Codebase language: English (code, comments, commits, docs)
-- Flat file architecture: all Go source files live at the root in `package main` — no sub-packages
+- Flat `package choixpeau` at root, one file per responsibility, `cmd/choixpeau/` for standalone binary
 - Format with `gofmt`
 
 ### Error handling
@@ -34,21 +34,23 @@ Minimalist A/B cohort assignment API, written in Go.
 
 ## Code structure
 
-Flat layout — all Go files at the root in `package main`, one file per responsibility:
+Flat layout — all Go files at the root in `package choixpeau`, one file per responsibility:
 
-- `main.go` — entrypoint, HTTP server, route registration
-- `admin.go` — admin handlers (CRUD experiments under `/admin/v1`)
-- `model.go` — domain structs (Experiment, Variant, Assignment), Store interfaces (ReadStore, WriteStore, Store), Engine interface
+- `model.go` — domain structs (Experiment, Variant, Assignment), interfaces (Store, Engine)
 - `errors.go` — sentinel errors
-- `sqlite_store.go` — SQLite-backed Store implementation
-- `cached_store.go` — in-memory cache wrapping a Store (warm-up on startup, reads from cache, writes refresh cache)
 - `validate.go` — validation methods on Experiment
 - `engine.go` — assignment engine (lookup, overrides, hash-based variant selection)
+- `assign.go` — HTTP handlers for assign and bulk assign endpoints
+- `admin.go` — admin handlers (CRUD experiments under `/admin/v1`)
+- `server.go` — Server struct, NewServer, RegisterRoutes, writeJSON helper, health handler
+- `sqlite_store.go` — SQLite-backed Store implementation
+- `cached_store.go` — in-memory cache wrapping a Store (warm-up on startup, reads from cache, writes refresh cache)
+- `cmd/choixpeau/main.go` — standalone binary entrypoint
 
 ## Build & Run
 
 ```bash
-go build -o choixpeau .
+go build -o choixpeau ./cmd/choixpeau
 PORT=8080 DB_PATH=choixpeau.db ./choixpeau
 ```
 
