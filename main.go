@@ -41,6 +41,12 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+type assignResponse struct {
+	Experiment string `json:"experiment"`
+	Variant    string `json:"variant"`
+	UserID     string `json:"user_id"`
+}
+
 func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 	experimentSlug := r.URL.Query().Get("experiment")
 	if experimentSlug == "" {
@@ -68,7 +74,11 @@ func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, assignment)
+	writeJSON(w, http.StatusOK, assignResponse{
+		Experiment: assignment.Experiment,
+		Variant:    assignment.Variant,
+		UserID:     assignment.UserID,
+	})
 }
 
 type bulkAssignRequest struct {
