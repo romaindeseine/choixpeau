@@ -2,6 +2,8 @@ package choixpeau
 
 import "time"
 
+// Experiment domain
+
 type ExperimentStatus string
 
 const (
@@ -26,15 +28,12 @@ type Experiment struct {
 	UpdatedAt time.Time         `json:"updated_at"`
 }
 
-type Assignment struct {
-	Experiment string
-	Variant    string
-}
-
 type ExperimentFilter struct {
 	Status *ExperimentStatus
 	Slugs  []string
 }
+
+// Store interfaces
 
 type ReadStore interface {
 	Get(slug string) (Experiment, error)
@@ -52,7 +51,15 @@ type Store interface {
 	WriteStore
 }
 
+// Engine domain
+
+type Assignment struct {
+	Experiment string
+	Variant    string
+}
+
 type Engine interface {
 	Assign(experimentSlug string, userID string) (Assignment, error)
 	BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error)
 }
+
