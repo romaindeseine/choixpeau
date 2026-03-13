@@ -1,5 +1,7 @@
 package main
 
+import "github.com/twmb/murmur3"
+
 type engine struct {
 	store ReadStore
 }
@@ -22,7 +24,7 @@ func (e *engine) Assign(experimentSlug string, userID string) (Assignment, error
 		return Assignment{Experiment: experimentSlug, Variant: v, UserID: userID}, nil
 	}
 
-	h := murmur3_32([]byte(exp.Seed+userID), 0)
+	h := murmur3.Sum32([]byte(exp.Seed + userID))
 
 	var totalWeight int
 	for _, v := range exp.Variants {

@@ -5,7 +5,6 @@ Minimalist A/B cohort assignment API, written in Go.
 ## Conventions
 
 - Codebase language: English (code, comments, commits, docs)
-- Go standard library only — no framework (exception: `gopkg.in/yaml.v3` for YAML config)
 - Flat file architecture: all Go source files live at the root in `package main` — no sub-packages
 - Format with `gofmt`
 
@@ -38,18 +37,17 @@ Minimalist A/B cohort assignment API, written in Go.
 Flat layout — all Go files at the root in `package main`, one file per responsibility:
 
 - `main.go` — entrypoint, HTTP server, handlers
-- `model.go` — domain structs (Experiment, Variant, Assignment) and Engine interface
+- `model.go` — domain structs (Experiment, Variant, Assignment), Store interfaces (ReadStore, WriteStore, Store), Engine interface
 - `errors.go` — sentinel errors
-- `store.go` — ReadStore interface and in-memory implementation
-- `hash.go` — MurmurHash3 32-bit implementation
+- `sqlite_store.go` — SQLite-backed Store implementation
+- `validate.go` — validation methods on Experiment
 - `engine.go` — assignment engine (lookup, overrides, hash-based variant selection)
-- `config.go` — YAML config loading and experiment validation
 
 ## Build & Run
 
 ```bash
 go build -o choixpeau .
-PORT=8080 CONFIG_PATH=experiments.example.yaml ./choixpeau
+PORT=8080 DB_PATH=choixpeau.db ./choixpeau
 ```
 
 Server listens on `:8080`.
@@ -57,7 +55,7 @@ Server listens on `:8080`.
 ### Environment variables
 
 - `PORT` — server port (default: `8080`)
-- `CONFIG_PATH` — path to YAML config file (default: `experiments.yaml`)
+- `DB_PATH` — path to SQLite database file (default: `choixpeau.db`)
 
 ## Tests
 
