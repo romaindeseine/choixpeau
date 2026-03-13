@@ -1,6 +1,10 @@
 package main
 
-import "github.com/twmb/murmur3"
+import (
+	"fmt"
+
+	"github.com/twmb/murmur3"
+)
 
 type engine struct {
 	store ReadStore
@@ -20,8 +24,31 @@ func (e *engine) Assign(experimentSlug string, userID string) (Assignment, error
 		return Assignment{}, ErrExperimentNotRunning
 	}
 
+	return Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}, nil
+}
+
+func (e *engine) BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error) {
+	status := StatusRunning
+	filter := ExperimentFilter{Status: &status}
+	if len(experimentSlugs) > 0 {
+		filter.Slugs = experimentSlugs
+	}
+
+	experiments, err := e.store.List(filter)
+	if err != nil {
+		return nil, fmt.Errorf("listing experiments: %w", err)
+	}
+
+	assignments := make([]Assignment, 0, len(experiments))
+	for _, exp := range experiments {
+		assignments = append(assignments, Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)})
+	}
+	return assignments, nil
+}
+
+func assignVariant(exp Experiment, userID string) string {
 	if v, ok := exp.Overrides[userID]; ok {
-		return Assignment{Experiment: experimentSlug, Variant: v, UserID: userID}, nil
+		return v
 	}
 
 	h := murmur3.Sum32([]byte(exp.Seed + userID))
@@ -37,9 +64,9 @@ func (e *engine) Assign(experimentSlug string, userID string) (Assignment, error
 	for _, v := range exp.Variants {
 		cumulative += uint32(v.Weight)
 		if bucket < cumulative {
-			return Assignment{Experiment: experimentSlug, Variant: v.Name, UserID: userID}, nil
+			return v.Name
 		}
 	}
 
-	return Assignment{Experiment: experimentSlug, Variant: exp.Variants[len(exp.Variants)-1].Name, UserID: userID}, nil
+	return exp.Variants[len(exp.Variants)-1].Name
 }

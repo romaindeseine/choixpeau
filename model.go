@@ -27,9 +27,8 @@ type Experiment struct {
 }
 
 type Assignment struct {
-	Experiment string `json:"experiment"`
-	Variant    string `json:"variant"`
-	UserID     string `json:"user_id"`
+	Experiment string
+	Variant    string
 }
 
 type ExperimentFilter struct {
@@ -55,4 +54,5 @@ type Store interface {
 
 type Engine interface {
 	Assign(experimentSlug string, userID string) (Assignment, error)
+	BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error)
 }
