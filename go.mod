@@ -2,7 +2,10 @@ module github.com/choixpeau
 
 go 1.25.6
 
-require modernc.org/sqlite v1.46.1
+require (
+	github.com/twmb/murmur3 v1.1.8
+	modernc.org/sqlite v1.46.1
+)
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect

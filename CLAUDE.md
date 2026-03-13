@@ -5,7 +5,6 @@ Minimalist A/B cohort assignment API, written in Go.
 ## Conventions
 
 - Codebase language: English (code, comments, commits, docs)
-- Go standard library only — no framework (exception: `modernc.org/sqlite` for SQLite)
 - Flat file architecture: all Go source files live at the root in `package main` — no sub-packages
 - Format with `gofmt`
 
@@ -42,7 +41,6 @@ Flat layout — all Go files at the root in `package main`, one file per respons
 - `errors.go` — sentinel errors
 - `sqlite_store.go` — SQLite-backed Store implementation
 - `validate.go` — experiment validation functions
-- `hash.go` — MurmurHash3 32-bit implementation
 - `engine.go` — assignment engine (lookup, overrides, hash-based variant selection)
 
 ## Build & Run
