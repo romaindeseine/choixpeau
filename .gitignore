@@ -1,9 +1,6 @@
-# Binaires
+# Build output
 /choixpeau
-*.exe
-*.dll
-*.so
-*.dylib
+/dist/
 
 # Env / secrets
 .env
@@ -16,7 +13,6 @@
 *.swp
 *.swo
 .DS_Store
-Thumbs.db
 
 # Go
 vendor/
