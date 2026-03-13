@@ -7,38 +7,6 @@ import (
 	"net/http"
 )
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-type HealthResponse struct {
-	Status string `json:"status"`
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, HealthResponse{Status: "ok"})
-}
-
-type Server struct {
-	Addr   string
-	store  Store
-	engine Engine
-}
-
-func newServer(addr string, store Store) *Server {
-	return &Server{
-		Addr:   addr,
-		store:  store,
-		engine: NewEngine(store),
-	}
-}
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 type assignResponse struct {
 	Experiment string `json:"experiment"`
 	Variant    string `json:"variant"`
