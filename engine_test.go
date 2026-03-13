@@ -6,6 +6,21 @@ import (
 	"testing"
 )
 
+func newTestStore(t *testing.T, experiments []Experiment) Store {
+	t.Helper()
+	s, err := NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	for _, exp := range experiments {
+		if err := s.Create(exp); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return s
+}
+
 func TestEngineAssign(t *testing.T) {
 	runningExp := Experiment{
 		Slug:   "exp-1",
@@ -19,7 +34,7 @@ func TestEngineAssign(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		store      ReadStore
+		exps       []Experiment
 		slug       string
 		userID     string
 		want       Assignment
@@ -28,53 +43,53 @@ func TestEngineAssign(t *testing.T) {
 	}{
 		{
 			name:    "experiment not found",
-			store:   newMemStore(nil),
+			exps:    nil,
 			slug:    "unknown",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotFound,
 		},
 		{
 			name: "experiment is draft",
-			store: newMemStore([]Experiment{{
+			exps: []Experiment{{
 				Slug:     "draft-exp",
 				Status:   StatusDraft,
 				Variants: []Variant{{Name: "control", Weight: 100}},
-			}}),
+			}},
 			slug:    "draft-exp",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotRunning,
 		},
 		{
 			name: "experiment is paused",
-			store: newMemStore([]Experiment{{
+			exps: []Experiment{{
 				Slug:     "paused-exp",
 				Status:   StatusPaused,
 				Variants: []Variant{{Name: "control", Weight: 100}},
-			}}),
+			}},
 			slug:    "paused-exp",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotRunning,
 		},
 		{
 			name: "experiment is stopped",
-			store: newMemStore([]Experiment{{
+			exps: []Experiment{{
 				Slug:     "stopped-exp",
 				Status:   StatusStopped,
 				Variants: []Variant{{Name: "control", Weight: 100}},
-			}}),
+			}},
 			slug:    "stopped-exp",
 			userID:  "user-1",
 			wantErr: ErrExperimentNotRunning,
 		},
 		{
 			name: "override hit",
-			store: newMemStore([]Experiment{{
+			exps: []Experiment{{
 				Slug:      "override-exp",
 				Seed:      "override-exp",
 				Status:    StatusRunning,
 				Variants:  []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 				Overrides: map[string]string{"user-42": "treatment"},
-			}}),
+			}},
 			slug:       "override-exp",
 			userID:     "user-42",
 			want:       Assignment{Experiment: "override-exp", Variant: "treatment", UserID: "user-42"},
@@ -82,24 +97,24 @@ func TestEngineAssign(t *testing.T) {
 		},
 		{
 			name:       "single variant always assigned",
-			store:      newMemStore([]Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, Variants: []Variant{{Name: "only", Weight: 100}}}}),
+			exps:       []Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, Variants: []Variant{{Name: "only", Weight: 100}}}},
 			slug:       "single",
 			userID:     "user-1",
 			want:       Assignment{Experiment: "single", Variant: "only", UserID: "user-1"},
 			checkValue: true,
 		},
 		{
-			name:  "basic assignment returns valid variant",
-			store: newMemStore([]Experiment{runningExp}),
-			slug:  "exp-1",
-			// This user ID produces a known assignment via murmur3
+			name:   "basic assignment returns valid variant",
+			exps:   []Experiment{runningExp},
+			slug:   "exp-1",
 			userID: "user-1",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := NewEngine(tt.store)
+			store := newTestStore(t, tt.exps)
+			e := NewEngine(store)
 			got, err := e.Assign(tt.slug, tt.userID)
 
 			if tt.wantErr != nil {
@@ -129,7 +144,7 @@ func TestEngineAssign(t *testing.T) {
 }
 
 func TestEngineAssignDeterminism(t *testing.T) {
-	store := newMemStore([]Experiment{{
+	store := newTestStore(t, []Experiment{{
 		Slug:     "det-exp",
 		Seed:     "det-exp",
 		Status:   StatusRunning,
@@ -154,7 +169,7 @@ func TestEngineAssignDeterminism(t *testing.T) {
 }
 
 func TestEngineAssignDistribution(t *testing.T) {
-	store := newMemStore([]Experiment{{
+	store := newTestStore(t, []Experiment{{
 		Slug:     "dist-exp",
 		Seed:     "dist-exp",
 		Status:   StatusRunning,
@@ -191,11 +206,11 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 	expWithSeed := baseExp
 	expWithSeed.Seed = "different-seed"
 
-	e1 := NewEngine(newMemStore([]Experiment{baseExp}))
-	e2 := NewEngine(newMemStore([]Experiment{expWithSeed}))
+	store1 := newTestStore(t, []Experiment{baseExp})
+	store2 := newTestStore(t, []Experiment{expWithSeed})
+	e1 := NewEngine(store1)
+	e2 := NewEngine(store2)
 
-	// Collect assignments for many users; with a different seed
-	// at least some users should get different variants.
 	diffs := 0
 	n := 100
 	for i := 0; i < n; i++ {

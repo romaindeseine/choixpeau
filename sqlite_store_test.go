@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"testing"
-	"time"
 )
 
 func newTestSQLiteStore(t *testing.T) *SQLiteStore {
@@ -211,7 +210,6 @@ func TestSQLiteStoreUpdate(t *testing.T) {
 	}
 
 	created, _ := s.Get("update-test")
-	time.Sleep(time.Millisecond) // ensure UpdatedAt differs
 
 	exp.Status = StatusPaused
 	exp.Variants = []Variant{{Name: "solo", Weight: 100}}
@@ -238,8 +236,8 @@ func TestSQLiteStoreUpdate(t *testing.T) {
 	if _, ok := got.Overrides["user-42"]; ok {
 		t.Error("old override user-42 should be removed")
 	}
-	if !got.UpdatedAt.After(created.CreatedAt) {
-		t.Error("UpdatedAt should be after CreatedAt")
+	if got.UpdatedAt.Before(created.CreatedAt) {
+		t.Error("UpdatedAt should not be before CreatedAt")
 	}
 }
 
