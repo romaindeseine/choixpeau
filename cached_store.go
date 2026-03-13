@@ -65,3 +65,49 @@ func (c *CachedStore) List(filter ExperimentFilter) ([]Experiment, error) {
 
 	return results, nil
 }
+
+func (c *CachedStore) Create(exp Experiment) error {
+	if err := c.inner.Create(exp); err != nil {
+		return err
+	}
+
+	fresh, err := c.inner.Get(exp.Slug)
+	if err != nil {
+		return fmt.Errorf("refreshing cache after create: %w", err)
+	}
+
+	c.mu.Lock()
+	c.cache[fresh.Slug] = fresh
+	c.mu.Unlock()
+
+	return nil
+}
+
+func (c *CachedStore) Update(exp Experiment) error {
+	if err := c.inner.Update(exp); err != nil {
+		return err
+	}
+
+	fresh, err := c.inner.Get(exp.Slug)
+	if err != nil {
+		return fmt.Errorf("refreshing cache after update: %w", err)
+	}
+
+	c.mu.Lock()
+	c.cache[fresh.Slug] = fresh
+	c.mu.Unlock()
+
+	return nil
+}
+
+func (c *CachedStore) Delete(slug string) error {
+	if err := c.inner.Delete(slug); err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	delete(c.cache, slug)
+	c.mu.Unlock()
+
+	return nil
+}
