@@ -110,8 +110,8 @@ func TestBulkAssignHandler(t *testing.T) {
 		wantCheck  func(t *testing.T, body map[string]any)
 	}{
 		{
-			name:   "success with specific experiments",
-			body:   `{"user_id":"u_123","experiments":["exp-1","exp-2"]}`,
+			name: "success with specific experiments",
+			body: `{"user_id":"u_123","experiments":["exp-1","exp-2"]}`,
 			engine: &mockEngine{bulkAssignments: []Assignment{
 				{Experiment: "exp-1", Variant: "control"},
 				{Experiment: "exp-2", Variant: "treatment"},
