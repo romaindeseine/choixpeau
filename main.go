@@ -92,7 +92,13 @@ func main() {
 	}
 	slog.Info("✅ connected to database", "path", dbPath)
 
-	server := newServer(addr, store)
+	cached, err := NewCachedStore(store)
+	if err != nil {
+		slog.Error("❌ failed to initialize cache", "error", err)
+		os.Exit(1)
+	}
+
+	server := newServer(addr, cached)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
