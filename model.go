@@ -27,9 +27,8 @@ type Experiment struct {
 }
 
 type Assignment struct {
-	Experiment string `json:"experiment"`
-	Variant    string `json:"variant"`
-	UserID     string `json:"user_id"`
+	Experiment string
+	Variant    string
 }
 
 type ExperimentFilter struct {

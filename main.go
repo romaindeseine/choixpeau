@@ -77,7 +77,7 @@ func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, assignResponse{
 		Experiment: assignment.Experiment,
 		Variant:    assignment.Variant,
-		UserID:     assignment.UserID,
+		UserID:     userID,
 	})
 }
 
@@ -87,8 +87,8 @@ type bulkAssignRequest struct {
 }
 
 type bulkAssignResponse struct {
-	UserID      string       `json:"user_id"`
-	Assignments []Assignment `json:"assignments"`
+	UserID      string            `json:"user_id"`
+	Assignments map[string]string `json:"assignments"`
 }
 
 func (s *Server) bulkAssignHandler(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +110,12 @@ func (s *Server) bulkAssignHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, bulkAssignResponse{UserID: req.UserID, Assignments: assignments})
+	result := make(map[string]string, len(assignments))
+	for _, a := range assignments {
+		result[a.Experiment] = a.Variant
+	}
+
+	writeJSON(w, http.StatusOK, bulkAssignResponse{UserID: req.UserID, Assignments: result})
 }
 
 func main() {

@@ -56,7 +56,7 @@ func TestAssignHandler(t *testing.T) {
 		{
 			name:       "success",
 			query:      "experiment=checkout-redesign&user_id=u_123",
-			engine:     &mockEngine{assignment: Assignment{Experiment: "checkout-redesign", Variant: "new_checkout", UserID: "u_123"}},
+			engine:     &mockEngine{assignment: Assignment{Experiment: "checkout-redesign", Variant: "new_checkout"}},
 			wantStatus: http.StatusOK,
 			wantBody:   jsonBody{"experiment": "checkout-redesign", "variant": "new_checkout", "user_id": "u_123"},
 		},
@@ -131,30 +131,36 @@ func TestBulkAssignHandler(t *testing.T) {
 		wantCheck  func(t *testing.T, body map[string]any)
 	}{
 		{
-			name: "success with specific experiments",
-			body: `{"user_id":"u_123","experiments":["exp-1","exp-2"]}`,
+			name:   "success with specific experiments",
+			body:   `{"user_id":"u_123","experiments":["exp-1","exp-2"]}`,
 			engine: &mockEngine{bulkAssignments: []Assignment{
-				{Experiment: "exp-1", Variant: "control", UserID: "u_123"},
-				{Experiment: "exp-2", Variant: "treatment", UserID: "u_123"},
+				{Experiment: "exp-1", Variant: "control"},
+				{Experiment: "exp-2", Variant: "treatment"},
 			}},
 			wantStatus: http.StatusOK,
 			wantCheck: func(t *testing.T, body map[string]any) {
 				if body["user_id"] != "u_123" {
 					t.Errorf("expected user_id u_123, got %v", body["user_id"])
 				}
-				assignments := body["assignments"].([]any)
+				assignments := body["assignments"].(map[string]any)
 				if len(assignments) != 2 {
 					t.Fatalf("expected 2 assignments, got %d", len(assignments))
+				}
+				if assignments["exp-1"] != "control" {
+					t.Errorf("expected exp-1=control, got %v", assignments["exp-1"])
+				}
+				if assignments["exp-2"] != "treatment" {
+					t.Errorf("expected exp-2=treatment, got %v", assignments["exp-2"])
 				}
 			},
 		},
 		{
-			name:   "success with all running",
-			body:   `{"user_id":"u_123"}`,
-			engine: &mockEngine{bulkAssignments: []Assignment{{Experiment: "exp-1", Variant: "control", UserID: "u_123"}}},
+			name:       "success with all running",
+			body:       `{"user_id":"u_123"}`,
+			engine:     &mockEngine{bulkAssignments: []Assignment{{Experiment: "exp-1", Variant: "control"}}},
 			wantStatus: http.StatusOK,
 			wantCheck: func(t *testing.T, body map[string]any) {
-				assignments := body["assignments"].([]any)
+				assignments := body["assignments"].(map[string]any)
 				if len(assignments) != 1 {
 					t.Fatalf("expected 1 assignment, got %d", len(assignments))
 				}
@@ -184,7 +190,7 @@ func TestBulkAssignHandler(t *testing.T) {
 			engine:     &mockEngine{bulkAssignments: []Assignment{}},
 			wantStatus: http.StatusOK,
 			wantCheck: func(t *testing.T, body map[string]any) {
-				assignments := body["assignments"].([]any)
+				assignments := body["assignments"].(map[string]any)
 				if len(assignments) != 0 {
 					t.Fatalf("expected 0 assignments, got %d", len(assignments))
 				}

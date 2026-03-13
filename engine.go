@@ -24,7 +24,7 @@ func (e *engine) Assign(experimentSlug string, userID string) (Assignment, error
 		return Assignment{}, ErrExperimentNotRunning
 	}
 
-	return assignExperiment(exp, userID), nil
+	return Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}, nil
 }
 
 func (e *engine) BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error) {
@@ -41,14 +41,14 @@ func (e *engine) BulkAssign(userID string, experimentSlugs []string) ([]Assignme
 
 	assignments := make([]Assignment, 0, len(experiments))
 	for _, exp := range experiments {
-		assignments = append(assignments, assignExperiment(exp, userID))
+		assignments = append(assignments, Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)})
 	}
 	return assignments, nil
 }
 
-func assignExperiment(exp Experiment, userID string) Assignment {
+func assignVariant(exp Experiment, userID string) string {
 	if v, ok := exp.Overrides[userID]; ok {
-		return Assignment{Experiment: exp.Slug, Variant: v, UserID: userID}
+		return v
 	}
 
 	h := murmur3.Sum32([]byte(exp.Seed + userID))
@@ -64,9 +64,9 @@ func assignExperiment(exp Experiment, userID string) Assignment {
 	for _, v := range exp.Variants {
 		cumulative += uint32(v.Weight)
 		if bucket < cumulative {
-			return Assignment{Experiment: exp.Slug, Variant: v.Name, UserID: userID}
+			return v.Name
 		}
 	}
 
-	return Assignment{Experiment: exp.Slug, Variant: exp.Variants[len(exp.Variants)-1].Name, UserID: userID}
+	return exp.Variants[len(exp.Variants)-1].Name
 }
