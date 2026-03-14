@@ -80,10 +80,11 @@ Status must be one of: `draft`, `running`, `paused`, `stopped`. Seed is optional
 
 ## Configuration
 
-| Variable  | Default         | Description                    |
-|-----------|-----------------|--------------------------------|
-| `PORT`    | `8080`          | Server port                    |
-| `DB_PATH` | `pearcut.db`  | Path to SQLite database file   |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--http` | `0.0.0.0:8080` | Listen address (host:port) |
+| `--db` | `pearcut.db` | Path to SQLite database file |
+| `--events` | `noop` | Event publisher (`noop`) |
 
 ## Docker
 
@@ -101,7 +102,7 @@ RUN tar xzf /tmp/pearcut.tar.gz -C / && rm /tmp/pearcut.tar.gz
 
 EXPOSE 8080
 
-CMD ["/pearcut"]
+CMD ["/pearcut", "--db=/data/pearcut.db"]
 ```
 
 ## Deployment
@@ -119,10 +120,9 @@ fly volumes create pearcut_data --size 1
 [mounts]
   source = "pearcut_data"
   destination = "/data"
-
-[env]
-  DB_PATH = "/data/pearcut.db"
 ```
+
+Pass `--db=/data/pearcut.db` in your Dockerfile or Procfile.
 
 ### Cloud Run
 
@@ -131,21 +131,7 @@ gcloud run deploy pearcut \
   --image=your-image \
   --add-volume=name=data,type=cloud-storage,bucket=your-bucket \
   --add-volume-mount=volume=data,mount-path=/data \
-  --set-env-vars=DB_PATH=/data/pearcut.db
-```
-
-### AWS ECS
-
-Attach an EFS file system to your task definition to persist the database:
-
-```json
-{
-  "volumes": [{"name": "data", "efsVolumeConfiguration": {"fileSystemId": "fs-xxxxx"}}],
-  "containerDefinitions": [{
-    "mountPoints": [{"sourceVolume": "data", "containerPath": "/data"}],
-    "environment": [{"name": "DB_PATH", "value": "/data/pearcut.db"}]
-  }]
-}
+  --args="--db=/data/pearcut.db"
 ```
 
 ## How it works
