@@ -1,11 +1,11 @@
-# Choixpeau
+# Pearcut
 
 Open-source, minimalist A/B cohort assignment as a single downloadable binary. Written in Go, backed by SQLite.
 
 ## Conventions
 
 - Codebase language: English (code, comments, commits, docs)
-- Flat `package choixpeau` at root, one file per responsibility, `cmd/choixpeau/` for standalone binary
+- Flat `package pearcut` at root, one file per responsibility, `cmd/pearcut/` for standalone binary
 - Format with `gofmt`
 
 ### Error handling
@@ -34,7 +34,7 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 
 ## Code structure
 
-Flat layout — all Go files at the root in `package choixpeau`, one file per responsibility:
+Flat layout — all Go files at the root in `package pearcut`, one file per responsibility:
 
 - `model.go` — domain structs (Experiment, Variant, Assignment), interfaces (Store, Engine)
 - `errors.go` — sentinel errors
@@ -45,13 +45,13 @@ Flat layout — all Go files at the root in `package choixpeau`, one file per re
 - `server.go` — Server struct, NewServer, RegisterRoutes, writeJSON helper, health handler
 - `sqlite_store.go` — SQLite-backed Store implementation
 - `cached_store.go` — in-memory cache wrapping a Store (warm-up on startup, reads from cache, writes refresh cache)
-- `cmd/choixpeau/main.go` — standalone binary entrypoint
+- `cmd/pearcut/main.go` — standalone binary entrypoint
 
 ## Build & Run
 
 ```bash
-go build -o choixpeau ./cmd/choixpeau
-PORT=8080 DB_PATH=choixpeau.db ./choixpeau
+go build -o pearcut ./cmd/pearcut
+PORT=8080 DB_PATH=pearcut.db ./pearcut
 ```
 
 Server listens on `:8080`.
@@ -59,7 +59,7 @@ Server listens on `:8080`.
 ### Environment variables
 
 - `PORT` — server port (default: `8080`)
-- `DB_PATH` — path to SQLite database file (default: `choixpeau.db`)
+- `DB_PATH` — path to SQLite database file (default: `pearcut.db`)
 
 ## Tests
 
