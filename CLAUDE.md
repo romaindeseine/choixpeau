@@ -1,6 +1,6 @@
 # Choixpeau
 
-Minimalist A/B cohort assignment API, written in Go.
+Open-source, minimalist A/B cohort assignment as a single downloadable binary. Written in Go, backed by SQLite.
 
 ## Conventions
 
