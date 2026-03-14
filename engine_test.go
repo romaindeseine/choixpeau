@@ -1,6 +1,7 @@
 package pearcut
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -111,8 +112,8 @@ func TestEngineAssign(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := newTestStore(t, tt.exps)
-			e := NewEngine(store)
-			got, err := e.Assign(tt.slug, tt.userID)
+			e := NewEngine(store, nil)
+			got, err := e.Assign(context.Background(), tt.slug, tt.userID)
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -147,15 +148,15 @@ func TestEngineAssignDeterminism(t *testing.T) {
 		Status:   StatusRunning,
 		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}})
-	e := NewEngine(store)
+	e := NewEngine(store, nil)
 
-	first, err := e.Assign("det-exp", "user-123")
+	first, err := e.Assign(context.Background(), "det-exp", "user-123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	for i := 0; i < 100; i++ {
-		got, err := e.Assign("det-exp", "user-123")
+		got, err := e.Assign(context.Background(), "det-exp", "user-123")
 		if err != nil {
 			t.Fatalf("unexpected error on iteration %d: %v", i, err)
 		}
@@ -172,12 +173,12 @@ func TestEngineAssignDistribution(t *testing.T) {
 		Status:   StatusRunning,
 		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 	}})
-	e := NewEngine(store)
+	e := NewEngine(store, nil)
 
 	counts := map[string]int{}
 	n := 10000
 	for i := 0; i < n; i++ {
-		a, err := e.Assign("dist-exp", fmt.Sprintf("user-%d", i))
+		a, err := e.Assign(context.Background(), "dist-exp", fmt.Sprintf("user-%d", i))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -241,8 +242,8 @@ func TestEngineBulkAssign(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := newTestStore(t, tt.exps)
-			e := NewEngine(store)
-			assignments, err := e.BulkAssign("user-1", tt.slugs)
+			e := NewEngine(store, nil)
+			assignments, err := e.BulkAssign(context.Background(), "user-1", tt.slugs)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -277,15 +278,15 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 
 	store1 := newTestStore(t, []Experiment{baseExp})
 	store2 := newTestStore(t, []Experiment{expWithSeed})
-	e1 := NewEngine(store1)
-	e2 := NewEngine(store2)
+	e1 := NewEngine(store1, nil)
+	e2 := NewEngine(store2, nil)
 
 	diffs := 0
 	n := 100
 	for i := 0; i < n; i++ {
 		uid := fmt.Sprintf("user-%d", i)
-		a1, _ := e1.Assign("seed-exp", uid)
-		a2, _ := e2.Assign("seed-exp", uid)
+		a1, _ := e1.Assign(context.Background(), "seed-exp", uid)
+		a2, _ := e2.Assign(context.Background(), "seed-exp", uid)
 		if a1.Variant != a2.Variant {
 			diffs++
 		}
