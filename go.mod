@@ -1,4 +1,4 @@
-module github.com/choixpeau
+module github.com/pearcut
 
 go 1.25.6
 

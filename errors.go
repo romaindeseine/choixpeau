@@ -1,4 +1,4 @@
-package choixpeau
+package pearcut
 
 import "errors"
 

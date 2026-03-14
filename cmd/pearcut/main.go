@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/choixpeau"
+	"github.com/pearcut"
 )
 
 func main() {
@@ -20,23 +20,23 @@ func main() {
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "choixpeau.db"
+		dbPath = "pearcut.db"
 	}
 
-	store, err := choixpeau.NewSQLiteStore(dbPath)
+	store, err := pearcut.NewSQLiteStore(dbPath)
 	if err != nil {
 		slog.Error("❌ failed to open database", "path", dbPath, "error", err)
 		os.Exit(1)
 	}
 	slog.Info("✅ connected to database", "path", dbPath)
 
-	cached, err := choixpeau.NewCachedStore(store)
+	cached, err := pearcut.NewCachedStore(store)
 	if err != nil {
 		slog.Error("❌ failed to initialize cache", "error", err)
 		os.Exit(1)
 	}
 
-	srv := choixpeau.NewServer(addr, cached)
+	srv := pearcut.NewServer(addr, cached)
 
 	mux := http.NewServeMux()
 	srv.RegisterRoutes(mux)
