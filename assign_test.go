@@ -1,6 +1,7 @@
 package pearcut
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -16,11 +17,11 @@ type mockEngine struct {
 	bulkErr         error
 }
 
-func (m *mockEngine) Assign(experimentSlug string, userID string) (Assignment, error) {
+func (m *mockEngine) Assign(_ context.Context, experimentSlug string, userID string) (Assignment, error) {
 	return m.assignment, m.err
 }
 
-func (m *mockEngine) BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error) {
+func (m *mockEngine) BulkAssign(_ context.Context, userID string, experimentSlugs []string) ([]Assignment, error) {
 	return m.bulkAssignments, m.bulkErr
 }
 

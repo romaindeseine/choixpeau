@@ -1,20 +1,26 @@
 package pearcut
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/twmb/murmur3"
 )
 
 type engine struct {
-	store ReadStore
+	store     ReadStore
+	publisher EventPublisher
 }
 
-func NewEngine(store ReadStore) Engine {
-	return &engine{store: store}
+func NewEngine(store ReadStore, publisher EventPublisher) Engine {
+	if publisher == nil {
+		publisher = NoopPublisher{}
+	}
+	return &engine{store: store, publisher: publisher}
 }
 
-func (e *engine) Assign(experimentSlug string, userID string) (Assignment, error) {
+func (e *engine) Assign(ctx context.Context, experimentSlug string, userID string) (Assignment, error) {
 	exp, err := e.store.Get(experimentSlug)
 	if err != nil {
 		return Assignment{}, err
@@ -24,10 +30,17 @@ func (e *engine) Assign(experimentSlug string, userID string) (Assignment, error
 		return Assignment{}, ErrExperimentNotRunning
 	}
 
-	return Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}, nil
+	a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
+	e.publisher.Publish(ctx, AssignmentEvent{
+		UserID:     userID,
+		Experiment: a.Experiment,
+		Variant:    a.Variant,
+		Timestamp:  time.Now(),
+	})
+	return a, nil
 }
 
-func (e *engine) BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error) {
+func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs []string) ([]Assignment, error) {
 	status := StatusRunning
 	filter := ExperimentFilter{Status: &status}
 	if len(experimentSlugs) > 0 {
@@ -41,7 +54,14 @@ func (e *engine) BulkAssign(userID string, experimentSlugs []string) ([]Assignme
 
 	assignments := make([]Assignment, 0, len(experiments))
 	for _, exp := range experiments {
-		assignments = append(assignments, Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)})
+		a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
+		e.publisher.Publish(ctx, AssignmentEvent{
+			UserID:     userID,
+			Experiment: a.Experiment,
+			Variant:    a.Variant,
+			Timestamp:  time.Now(),
+		})
+		assignments = append(assignments, a)
 	}
 	return assignments, nil
 }

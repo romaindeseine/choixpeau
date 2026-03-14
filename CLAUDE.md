@@ -36,13 +36,14 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 
 Flat layout — all Go files at the root in `package pearcut`, one file per responsibility:
 
-- `model.go` — domain structs (Experiment, Variant, Assignment), interfaces (Store, Engine)
+- `model.go` — domain structs (Experiment, Variant, Assignment, AssignmentEvent), interfaces (Store, Engine, EventPublisher)
 - `errors.go` — sentinel errors
 - `validate.go` — validation methods on Experiment
-- `engine.go` — assignment engine (lookup, overrides, hash-based variant selection)
+- `engine.go` — assignment engine (lookup, overrides, hash-based variant selection, event publishing)
 - `assign.go` — HTTP handlers for assign and bulk assign endpoints
 - `admin.go` — admin handlers (CRUD experiments under `/admin/v1`)
 - `server.go` — Server struct, NewServer, RegisterRoutes, writeJSON helper, health handler
+- `publisher.go` — NoopPublisher (default EventPublisher implementation)
 - `sqlite_store.go` — SQLite-backed Store implementation
 - `cached_store.go` — in-memory cache wrapping a Store (warm-up on startup, reads from cache, writes refresh cache)
 - `cmd/pearcut/main.go` — standalone binary entrypoint
@@ -51,15 +52,16 @@ Flat layout — all Go files at the root in `package pearcut`, one file per resp
 
 ```bash
 go build -o pearcut ./cmd/pearcut
-PORT=8080 DB_PATH=pearcut.db ./pearcut
+./pearcut --http=0.0.0.0:8080 --db=pearcut.db --events=noop
 ```
 
-Server listens on `:8080`.
+### CLI flags
 
-### Environment variables
-
-- `PORT` — server port (default: `8080`)
-- `DB_PATH` — path to SQLite database file (default: `pearcut.db`)
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--http` | `0.0.0.0:8080` | Listen address (host:port) |
+| `--db` | `pearcut.db` | Path to SQLite database file |
+| `--events` | `noop` | Event publisher (`noop`) |
 
 ## Tests
 

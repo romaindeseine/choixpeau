@@ -1,6 +1,9 @@
 package pearcut
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // Experiment domain
 
@@ -59,6 +62,20 @@ type Assignment struct {
 }
 
 type Engine interface {
-	Assign(experimentSlug string, userID string) (Assignment, error)
-	BulkAssign(userID string, experimentSlugs []string) ([]Assignment, error)
+	Assign(ctx context.Context, experimentSlug string, userID string) (Assignment, error)
+	BulkAssign(ctx context.Context, userID string, experimentSlugs []string) ([]Assignment, error)
+}
+
+// Event publishing
+
+type AssignmentEvent struct {
+	UserID     string    `json:"user_id"`
+	Experiment string    `json:"experiment"`
+	Variant    string    `json:"variant"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+type EventPublisher interface {
+	Publish(ctx context.Context, event AssignmentEvent)
+	Close() error
 }

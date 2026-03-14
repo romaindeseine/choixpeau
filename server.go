@@ -25,11 +25,11 @@ type Server struct {
 	engine Engine
 }
 
-func NewServer(addr string, store Store) *Server {
+func NewServer(addr string, store Store, publisher EventPublisher) *Server {
 	return &Server{
 		Addr:   addr,
 		store:  store,
-		engine: NewEngine(store),
+		engine: NewEngine(store, publisher),
 	}
 }
 

@@ -26,7 +26,7 @@ func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	assignment, err := s.engine.Assign(experimentSlug, userID)
+	assignment, err := s.engine.Assign(r.Context(), experimentSlug, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrExperimentNotFound):
@@ -69,7 +69,7 @@ func (s *Server) bulkAssignHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	assignments, err := s.engine.BulkAssign(req.UserID, req.Experiments)
+	assignments, err := s.engine.BulkAssign(r.Context(), req.UserID, req.Experiments)
 	if err != nil {
 		slog.Error("bulk assignment failed", "user_id", req.UserID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
