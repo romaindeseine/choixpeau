@@ -1,6 +1,6 @@
 # ClickHouse
 
-Pipe Pearcut's stdout events directly into ClickHouse — a self-hosted, open-source analytics database built for append-only data like assignment events.
+Pipe Pearcut's stdout events directly into [ClickHouse](https://clickhouse.com) — a self-hosted, open-source analytics database built for append-only data like assignment events.
 
 ## Prerequisites
 
