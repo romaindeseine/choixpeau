@@ -23,17 +23,17 @@ In the Logs Explorer (Cloud Console) or via `gcloud`, use this filter to isolate
 
 ```
 resource.type="cloud_run_revision"
-resource.labels.service_name="pearcut"
+resource.labels.service_name="your-service"
 jsonPayload.type="assignment"
 ```
 
-Replace `pearcut` with your Cloud Run service name. The `jsonPayload.type="assignment"` condition selects only assignment events.
+Replace `your-service` with your Cloud Run service name.
 
 ## Verify
 
 ```bash
 # Trigger an assignment
-curl -s "https://your-service.run.app/api/v1/assign?experiment=checkout-flow&user_id=user-42"
+curl -s "https://your-service-url.run.app/api/v1/assign?experiment=checkout-flow&user_id=user-42"
 
 # Check Cloud Logging
 gcloud logging read \
@@ -43,38 +43,83 @@ gcloud logging read \
   --format=json
 ```
 
-## Bonus: sink to BigQuery
+## Bonus: sink to BigQuery via GCS
 
-Cloud Logging can stream matching entries directly into [BigQuery](https://cloud.google.com/bigquery) for SQL analysis. The sink auto-creates a table with this schema:
+Cloud Logging can export matching entries to [Cloud Storage](https://cloud.google.com/storage) as JSON files. You can then query them from [BigQuery](https://cloud.google.com/bigquery) using an external table.
 
 ```
-timestamp               TIMESTAMP       Cloud Logging ingestion time
-jsonPayload             RECORD
-  ├── type              STRING          Event type ("assignment")
-  ├── user_id           STRING          Assigned user
-  ├── experiment        STRING          Experiment slug
-  ├── variant           STRING          Assigned variant
-  └── timestamp         STRING          RFC 3339 assignment timestamp
+Cloud Logging → sink → GCS (JSON files) → BigQuery external table
 ```
 
-Create a log sink:
+### 1. Create a GCS bucket
 
 ```bash
-gcloud logging sinks create pearcut-events \
-  bigquery.googleapis.com/projects/your-project/datasets/pearcut \
-  --log-filter='resource.type="cloud_run_revision" resource.labels.service_name="pearcut" jsonPayload.type="assignment"'
+gcloud storage buckets create gs://your-bucket \
+  --location=your-region
 ```
 
-<!-- TODO: screenshot of BigQuery query results -->
+### 2. Create the log sink
 
-Then query:
+```bash
+gcloud logging sinks create your-sink-name \
+  storage.googleapis.com/your-bucket \
+  --log-filter='resource.type="cloud_run_revision" resource.labels.service_name="your-service" jsonPayload.type="assignment"'
+```
+
+### 3. Grant write access
+
+The sink uses a dedicated service account to write to GCS. Find it in the sink details:
+
+```bash
+gcloud logging sinks describe your-sink-name --project=your-project
+```
+
+Look for the `writerIdentity` field, then grant it the Storage Object Creator role on the bucket:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://your-bucket \
+  --member="serviceAccount:WRITER_IDENTITY" \
+  --role="roles/storage.objectCreator"
+```
+
+Replace `WRITER_IDENTITY` with the service account from `writerIdentity` (e.g. `service-123456@gcp-sa-logging.iam.gserviceaccount.com`).
+
+### 4. Create a BigQuery external table
+
+Cloud Logging exports files in its own JSON format, which includes many metadata fields (`insertId`, `resource`, `logName`, etc.). The schema below keeps only what's needed for analytics: the ingestion `timestamp` and the event fields under `jsonPayload`.
+
+```bash
+bq mk --dataset --location=your-region your-project:your-dataset
+```
+
+```sql
+CREATE EXTERNAL TABLE `your-project.your-dataset.assignment_events`
+(
+  timestamp TIMESTAMP,
+  jsonPayload STRUCT<
+    type STRING,
+    user_id STRING,
+    experiment STRING,
+    variant STRING,
+    timestamp STRING
+  >
+)
+OPTIONS (
+  format = 'JSON',
+  uris = ['gs://your-bucket/*']
+);
+```
+
+### 5. Query
+
+<!-- TODO: screenshot of BigQuery query results -->
 
 ```sql
 SELECT
   jsonPayload.experiment AS experiment,
   jsonPayload.variant AS variant,
   COUNT(*) AS assignments
-FROM `your-project.pearcut.cloud_run_revision`
+FROM `your-project.your-dataset.assignment_events`
 GROUP BY experiment, variant
 ORDER BY assignments DESC
 ```
