@@ -1,6 +1,6 @@
 # GCP Cloud Logging
 
-Cloud Run automatically captures everything your container writes to stdout and sends it to Cloud Logging as structured log entries. No agent, no sidecar, no configuration — if Pearcut runs on Cloud Run with `--events=stdout`, your assignment events are already in Cloud Logging.
+[Cloud Run](https://cloud.google.com/run) automatically captures everything your container writes to stdout and sends it to [Cloud Logging](https://cloud.google.com/logging) as structured log entries. No agent, no sidecar, no configuration — if Pearcut runs on Cloud Run with `--events=stdout`, your assignment events are already in Cloud Logging.
 
 ```
 Pearcut (stdout) → Cloud Run (automatic capture) → Cloud Logging
@@ -45,7 +45,7 @@ gcloud logging read \
 
 ## Bonus: sink to BigQuery
 
-Cloud Logging can stream matching entries directly into BigQuery for SQL analysis. The sink auto-creates a table with this schema:
+Cloud Logging can stream matching entries directly into [BigQuery](https://cloud.google.com/bigquery) for SQL analysis. The sink auto-creates a table with this schema:
 
 ```
 timestamp               TIMESTAMP       Cloud Logging ingestion time
@@ -62,7 +62,7 @@ Create a log sink:
 ```bash
 gcloud logging sinks create pearcut-events \
   bigquery.googleapis.com/projects/your-project/datasets/pearcut \
-  --log-filter='resource.type="cloud_run_revision" resource.labels.service_name="pearcut" jsonPayload.type="assignment"'
+  --log-filter='resource.type="cloud_run_revision" resource.labels.service_name="pearcut"'
 ```
 
 <!-- TODO: screenshot of BigQuery query results -->

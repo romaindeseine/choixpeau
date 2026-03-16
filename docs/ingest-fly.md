@@ -37,9 +37,9 @@ fly secrets set \
   ACCESS_TOKEN=$(fly tokens create readonly personal)
 ```
 
-Then add the secrets for your chosen destination. See the [fly-log-shipper README](https://github.com/superfly/fly-log-shipper) for the full list of supported destinations and their required secrets.
+Then configure your destination. The [fly-log-shipper README](https://github.com/superfly/fly-log-shipper) covers supported destinations, required secrets, and how to provide a custom Vector configuration.
 
-The built-in destinations are mostly oriented towards monitoring and observability. For analytics destinations (BigQuery, ClickHouse, etc.), you will likely need a custom Vector configuration — see the [Vector ingestion guide](ingest-vector.md).
+> Analytics services like BigQuery or Athena are not direct destinations — they require an intermediate storage layer (GCS, S3). See the [Vector ingestion guide](ingest-vector.md) for examples.
 
 ## Filter only Pearcut logs
 
