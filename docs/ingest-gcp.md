@@ -45,7 +45,19 @@ gcloud logging read \
 
 ## Bonus: sink to BigQuery
 
-Cloud Logging can stream matching entries directly into BigQuery for SQL analysis. Create a log sink:
+Cloud Logging can stream matching entries directly into BigQuery for SQL analysis. The sink auto-creates a table with this schema:
+
+```
+timestamp               TIMESTAMP       Cloud Logging ingestion time
+jsonPayload             RECORD
+  ├── type              STRING          Event type ("assignment")
+  ├── user_id           STRING          Assigned user
+  ├── experiment        STRING          Experiment slug
+  ├── variant           STRING          Assigned variant
+  └── timestamp         STRING          RFC 3339 assignment timestamp
+```
+
+Create a log sink:
 
 ```bash
 gcloud logging sinks create pearcut-events \
@@ -59,11 +71,11 @@ Then query:
 
 ```sql
 SELECT
-  jsonPayload.experiment,
-  jsonPayload.variant,
+  jsonPayload.experiment AS experiment,
+  jsonPayload.variant AS variant,
   COUNT(*) AS assignments
 FROM `your-project.pearcut.cloud_run_revision`
 WHERE jsonPayload.type = "assignment"
-GROUP BY 1, 2
-ORDER BY 3 DESC
+GROUP BY experiment, variant
+ORDER BY assignments DESC
 ```
