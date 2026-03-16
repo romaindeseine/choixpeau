@@ -32,6 +32,7 @@ func (e *engine) Assign(ctx context.Context, experimentSlug string, userID strin
 
 	a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
 	e.publisher.Publish(ctx, AssignmentEvent{
+		Type:       "assignment",
 		UserID:     userID,
 		Experiment: a.Experiment,
 		Variant:    a.Variant,
@@ -56,6 +57,7 @@ func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs 
 	for _, exp := range experiments {
 		a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
 		e.publisher.Publish(ctx, AssignmentEvent{
+			Type:       "assignment",
 			UserID:     userID,
 			Experiment: a.Experiment,
 			Variant:    a.Variant,

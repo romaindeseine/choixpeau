@@ -69,6 +69,7 @@ type Engine interface {
 // Event publishing
 
 type AssignmentEvent struct {
+	Type       string    `json:"type"`
 	UserID     string    `json:"user_id"`
 	Experiment string    `json:"experiment"`
 	Variant    string    `json:"variant"`

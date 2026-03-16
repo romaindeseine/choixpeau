@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 
 	httpAddr := flag.String("http", "0.0.0.0:8080", "listen address (host:port)")
 	dbPath := flag.String("db", "pearcut.db", "path to SQLite database")
