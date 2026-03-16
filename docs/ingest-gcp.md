@@ -75,7 +75,6 @@ SELECT
   jsonPayload.variant AS variant,
   COUNT(*) AS assignments
 FROM `your-project.pearcut.cloud_run_revision`
-WHERE jsonPayload.type = "assignment"
 GROUP BY experiment, variant
 ORDER BY assignments DESC
 ```
