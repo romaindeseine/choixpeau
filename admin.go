@@ -39,6 +39,7 @@ func (s *Server) listExperiments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter.Search = q.Get("search")
+	filter.Tags = q["tags"]
 
 	page, perPage := 1, 20
 	if raw := q.Get("page"); raw != "" {

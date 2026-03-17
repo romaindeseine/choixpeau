@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+func hasAllTags(expTags []string, required []string) bool {
+	set := make(map[string]struct{}, len(expTags))
+	for _, t := range expTags {
+		set[t] = struct{}{}
+	}
+	for _, t := range required {
+		if _, ok := set[t]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func filterExperiments(exps []Experiment, filter ExperimentFilter) []Experiment {
 	result := make([]Experiment, 0, len(exps))
 
@@ -23,6 +36,9 @@ func filterExperiments(exps []Experiment, filter ExperimentFilter) []Experiment 
 			}
 		}
 		if filter.Search != "" && !strings.Contains(strings.ToLower(exp.Slug), strings.ToLower(filter.Search)) {
+			continue
+		}
+		if len(filter.Tags) > 0 && !hasAllTags(exp.Tags, filter.Tags) {
 			continue
 		}
 		result = append(result, exp)
