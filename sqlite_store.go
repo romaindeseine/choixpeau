@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -67,60 +66,46 @@ func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 	return exp, nil
 }
 
-func (s *SQLiteStore) List(filter ExperimentFilter) ([]Experiment, error) {
-	query := "SELECT slug, status, seed, variants, overrides, description, tags, owner, hypothesis, created_at, updated_at FROM experiments"
-	var args []any
-	var conditions []string
-
-	if filter.Status != nil {
-		conditions = append(conditions, "status = ?")
-		args = append(args, string(*filter.Status))
-	}
-	if len(filter.Slugs) > 0 {
-		placeholders := make([]string, len(filter.Slugs))
-		for i, slug := range filter.Slugs {
-			placeholders[i] = "?"
-			args = append(args, slug)
-		}
-		conditions = append(conditions, "slug IN ("+strings.Join(placeholders, ", ")+")")
-	}
-
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
-	query += " ORDER BY slug"
-
-	rows, err := s.db.Query(query, args...)
+// List loads all experiments from SQLite and delegates filtering, sorting and
+// pagination to the shared helpers in filter.go. This is intentional: the
+// CachedStore is the primary read path, so SQLiteStore keeps the query simple
+// and avoids duplicating filter logic in SQL.
+func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
+	rows, err := s.db.Query("SELECT slug, status, seed, variants, overrides, description, tags, owner, hypothesis, created_at, updated_at FROM experiments")
 	if err != nil {
-		return nil, fmt.Errorf("list experiments: %w", err)
+		return ExperimentListResult{}, fmt.Errorf("list experiments: %w", err)
 	}
 	defer rows.Close()
 
-	var experiments []Experiment
+	var all []Experiment
 	for rows.Next() {
 		var exp Experiment
 		var variantsJSON, overridesJSON, tagsJSON, createdAt, updatedAt string
 		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
-			return nil, fmt.Errorf("scan experiment: %w", err)
+			return ExperimentListResult{}, fmt.Errorf("scan experiment: %w", err)
 		}
 		if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
-			return nil, fmt.Errorf("decode variants for %q: %w", exp.Slug, err)
+			return ExperimentListResult{}, fmt.Errorf("decode variants for %q: %w", exp.Slug, err)
 		}
 		if err := json.Unmarshal([]byte(overridesJSON), &exp.Overrides); err != nil {
-			return nil, fmt.Errorf("decode overrides for %q: %w", exp.Slug, err)
+			return ExperimentListResult{}, fmt.Errorf("decode overrides for %q: %w", exp.Slug, err)
 		}
 		if err := json.Unmarshal([]byte(tagsJSON), &exp.Tags); err != nil {
-			return nil, fmt.Errorf("decode tags for %q: %w", exp.Slug, err)
+			return ExperimentListResult{}, fmt.Errorf("decode tags for %q: %w", exp.Slug, err)
 		}
 		exp.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		exp.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		experiments = append(experiments, exp)
+		all = append(all, exp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate experiments: %w", err)
+		return ExperimentListResult{}, fmt.Errorf("iterate experiments: %w", err)
 	}
 
-	return experiments, nil
+	filtered := filterExperiments(all, filter)
+	sortExperiments(filtered, opts)
+	page, total := paginateExperiments(filtered, opts)
+
+	return ExperimentListResult{Experiments: page, Total: total}, nil
 }
 
 func (s *SQLiteStore) Create(exp Experiment) error {
