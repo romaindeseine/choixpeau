@@ -39,8 +39,9 @@ func (s *SQLiteStore) migrate() error {
 			status      TEXT NOT NULL DEFAULT 'draft',
 			variants    TEXT NOT NULL DEFAULT '[]',
 			overrides   TEXT NOT NULL DEFAULT '{}',
-			seed        TEXT NOT NULL DEFAULT '',
-			description TEXT NOT NULL DEFAULT '',
+			seed            TEXT NOT NULL DEFAULT '',
+			targeting_rules TEXT NOT NULL DEFAULT '[]',
+			description     TEXT NOT NULL DEFAULT '',
 			tags        TEXT NOT NULL DEFAULT '[]',
 			owner       TEXT NOT NULL DEFAULT '',
 			hypothesis  TEXT NOT NULL DEFAULT '',
@@ -53,7 +54,7 @@ func (s *SQLiteStore) migrate() error {
 
 func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 	row := s.db.QueryRow(
-		"SELECT slug, status, seed, variants, overrides, description, tags, owner, hypothesis, created_at, updated_at FROM experiments WHERE slug = ?",
+		"SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, created_at, updated_at FROM experiments WHERE slug = ?",
 		slug,
 	)
 
@@ -72,7 +73,7 @@ func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 // CachedStore is the primary read path, so SQLiteStore keeps the query simple
 // and avoids duplicating filter logic in SQL.
 func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
-	rows, err := s.db.Query("SELECT slug, status, seed, variants, overrides, description, tags, owner, hypothesis, created_at, updated_at FROM experiments")
+	rows, err := s.db.Query("SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, created_at, updated_at FROM experiments")
 	if err != nil {
 		return ExperimentListResult{}, fmt.Errorf("list experiments: %w", err)
 	}
@@ -81,8 +82,8 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 	var all []Experiment
 	for rows.Next() {
 		var exp Experiment
-		var variantsJSON, overridesJSON, tagsJSON, createdAt, updatedAt string
-		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
+		var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
+		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
 			return ExperimentListResult{}, fmt.Errorf("scan experiment: %w", err)
 		}
 		if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
@@ -90,6 +91,9 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 		}
 		if err := json.Unmarshal([]byte(overridesJSON), &exp.Overrides); err != nil {
 			return ExperimentListResult{}, fmt.Errorf("decode overrides for %q: %w", exp.Slug, err)
+		}
+		if err := json.Unmarshal([]byte(targetingRulesJSON), &exp.TargetingRules); err != nil {
+			return ExperimentListResult{}, fmt.Errorf("decode targeting rules for %q: %w", exp.Slug, err)
 		}
 		if err := json.Unmarshal([]byte(tagsJSON), &exp.Tags); err != nil {
 			return ExperimentListResult{}, fmt.Errorf("decode tags for %q: %w", exp.Slug, err)
@@ -129,15 +133,19 @@ func (s *SQLiteStore) Create(exp Experiment) error {
 	if err != nil {
 		return fmt.Errorf("encode overrides: %w", err)
 	}
+	targetingRulesJSON, err := json.Marshal(exp.TargetingRules)
+	if err != nil {
+		return fmt.Errorf("encode targeting rules: %w", err)
+	}
 	tagsJSON, err := json.Marshal(exp.Tags)
 	if err != nil {
 		return fmt.Errorf("encode tags: %w", err)
 	}
 
 	_, err = s.db.Exec(
-		"INSERT INTO experiments (slug, status, seed, variants, overrides, description, tags, owner, hypothesis, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO experiments (slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		exp.Slug, string(exp.Status), exp.Seed,
-		string(variantsJSON), string(overridesJSON),
+		string(variantsJSON), string(overridesJSON), string(targetingRulesJSON),
 		exp.Description, string(tagsJSON), exp.Owner, exp.Hypothesis,
 		exp.CreatedAt.Format(time.RFC3339), exp.UpdatedAt.Format(time.RFC3339),
 	)
@@ -169,15 +177,19 @@ func (s *SQLiteStore) Update(exp Experiment) error {
 	if err != nil {
 		return fmt.Errorf("encode overrides: %w", err)
 	}
+	targetingRulesJSON, err := json.Marshal(exp.TargetingRules)
+	if err != nil {
+		return fmt.Errorf("encode targeting rules: %w", err)
+	}
 	tagsJSON, err := json.Marshal(exp.Tags)
 	if err != nil {
 		return fmt.Errorf("encode tags: %w", err)
 	}
 
 	res, err := s.db.Exec(
-		"UPDATE experiments SET status = ?, seed = ?, variants = ?, overrides = ?, description = ?, tags = ?, owner = ?, hypothesis = ?, updated_at = ? WHERE slug = ?",
+		"UPDATE experiments SET status = ?, seed = ?, variants = ?, overrides = ?, targeting_rules = ?, description = ?, tags = ?, owner = ?, hypothesis = ?, updated_at = ? WHERE slug = ?",
 		string(exp.Status), exp.Seed,
-		string(variantsJSON), string(overridesJSON),
+		string(variantsJSON), string(overridesJSON), string(targetingRulesJSON),
 		exp.Description, string(tagsJSON), exp.Owner, exp.Hypothesis,
 		exp.UpdatedAt.Format(time.RFC3339), exp.Slug,
 	)
@@ -208,8 +220,8 @@ func (s *SQLiteStore) Delete(slug string) error {
 
 func scanExperiment(row *sql.Row) (Experiment, error) {
 	var exp Experiment
-	var variantsJSON, overridesJSON, tagsJSON, createdAt, updatedAt string
-	if err := row.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
+	var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
+	if err := row.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
 		return Experiment{}, err
 	}
 	if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
@@ -217,6 +229,9 @@ func scanExperiment(row *sql.Row) (Experiment, error) {
 	}
 	if err := json.Unmarshal([]byte(overridesJSON), &exp.Overrides); err != nil {
 		return Experiment{}, fmt.Errorf("decode overrides: %w", err)
+	}
+	if err := json.Unmarshal([]byte(targetingRulesJSON), &exp.TargetingRules); err != nil {
+		return Experiment{}, fmt.Errorf("decode targeting rules: %w", err)
 	}
 	if err := json.Unmarshal([]byte(tagsJSON), &exp.Tags); err != nil {
 		return Experiment{}, fmt.Errorf("decode tags: %w", err)
