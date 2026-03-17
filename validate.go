@@ -15,6 +15,9 @@ func (e Experiment) Validate() error {
 	if err := e.validateOverrides(); err != nil {
 		return err
 	}
+	if err := e.validateTags(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -50,6 +53,15 @@ func (e Experiment) validateVariants() error {
 			return fmt.Errorf("experiment %q has duplicate variant %q", e.Slug, v.Name)
 		}
 		names[v.Name] = true
+	}
+	return nil
+}
+
+func (e Experiment) validateTags() error {
+	for _, tag := range e.Tags {
+		if tag == "" {
+			return fmt.Errorf("experiment %q has empty tag", e.Slug)
+		}
 	}
 	return nil
 }

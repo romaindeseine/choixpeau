@@ -26,7 +26,7 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 
 ## Domain vocabulary
 
-- **Experiment** — an A/B test identified by a unique `slug`. Has a status (`draft` → `running` → `paused` → `stopped`), a list of variants, and optional overrides.
+- **Experiment** — an A/B test identified by a unique `slug`. Has a status (`draft` → `running` → `paused` → `stopped`), a list of variants, optional overrides, and optional metadata (`description`, `tags`, `owner`, `hypothesis`).
 - **Variant** — one option within an experiment (e.g. `control`, `new_checkout`). Defined by a `name` and a `weight` (relative traffic allocation).
 - **Assignment** — the result of an assignment: maps a `user_id` to a `variant` for a given `experiment`.
 - **Override** — forced assignment of a `user_id` to a specific variant, takes priority over hash.

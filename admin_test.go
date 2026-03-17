@@ -210,7 +210,7 @@ func TestCreateExperiment(t *testing.T) {
 	}{
 		{
 			name:       "success",
-			body:       `{"slug":"new-exp","status":"draft","variants":[{"name":"control","weight":1}]}`,
+			body:       `{"slug":"new-exp","status":"draft","variants":[{"name":"control","weight":1}],"description":"test desc","tags":["checkout"],"owner":"team-a","hypothesis":"improves ctr"}`,
 			store:      newMockStore(),
 			wantStatus: http.StatusCreated,
 		},
@@ -254,6 +254,18 @@ func TestCreateExperiment(t *testing.T) {
 				}
 				if exp.Slug != "new-exp" {
 					t.Fatalf("expected slug new-exp, got %s", exp.Slug)
+				}
+				if exp.Description != "test desc" {
+					t.Errorf("Description = %q, want %q", exp.Description, "test desc")
+				}
+				if len(exp.Tags) != 1 || exp.Tags[0] != "checkout" {
+					t.Errorf("Tags = %v, want [checkout]", exp.Tags)
+				}
+				if exp.Owner != "team-a" {
+					t.Errorf("Owner = %q, want %q", exp.Owner, "team-a")
+				}
+				if exp.Hypothesis != "improves ctr" {
+					t.Errorf("Hypothesis = %q, want %q", exp.Hypothesis, "improves ctr")
 				}
 			}
 		})

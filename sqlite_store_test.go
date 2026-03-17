@@ -24,7 +24,11 @@ func testExperiment(slug string) Experiment {
 			{Name: "control", Weight: 50},
 			{Name: "treatment", Weight: 50},
 		},
-		Overrides: map[string]string{"user-42": "treatment"},
+		Overrides:   map[string]string{"user-42": "treatment"},
+		Description: "test experiment description",
+		Tags:        []string{"checkout", "mobile"},
+		Owner:       "team-growth",
+		Hypothesis:  "new variant improves conversion",
 	}
 }
 
@@ -60,6 +64,23 @@ func TestSQLiteStoreCreateAndGet(t *testing.T) {
 	}
 	if got.Overrides["user-42"] != "treatment" {
 		t.Errorf("Override user-42 = %q, want %q", got.Overrides["user-42"], "treatment")
+	}
+	if got.Description != exp.Description {
+		t.Errorf("Description = %q, want %q", got.Description, exp.Description)
+	}
+	if len(got.Tags) != len(exp.Tags) {
+		t.Fatalf("Tags count = %d, want %d", len(got.Tags), len(exp.Tags))
+	}
+	for i, tag := range got.Tags {
+		if tag != exp.Tags[i] {
+			t.Errorf("Tags[%d] = %q, want %q", i, tag, exp.Tags[i])
+		}
+	}
+	if got.Owner != exp.Owner {
+		t.Errorf("Owner = %q, want %q", got.Owner, exp.Owner)
+	}
+	if got.Hypothesis != exp.Hypothesis {
+		t.Errorf("Hypothesis = %q, want %q", got.Hypothesis, exp.Hypothesis)
 	}
 	if got.CreatedAt.IsZero() {
 		t.Error("CreatedAt should not be zero")
@@ -214,6 +235,10 @@ func TestSQLiteStoreUpdate(t *testing.T) {
 	exp.Status = StatusPaused
 	exp.Variants = []Variant{{Name: "solo", Weight: 100}}
 	exp.Overrides = map[string]string{"user-99": "solo"}
+	exp.Description = "updated description"
+	exp.Tags = []string{"pricing"}
+	exp.Owner = "team-platform"
+	exp.Hypothesis = "updated hypothesis"
 
 	if err := s.Update(exp); err != nil {
 		t.Fatalf("Update() error = %v", err)
@@ -235,6 +260,18 @@ func TestSQLiteStoreUpdate(t *testing.T) {
 	}
 	if _, ok := got.Overrides["user-42"]; ok {
 		t.Error("old override user-42 should be removed")
+	}
+	if got.Description != "updated description" {
+		t.Errorf("Description = %q, want %q", got.Description, "updated description")
+	}
+	if len(got.Tags) != 1 || got.Tags[0] != "pricing" {
+		t.Errorf("Tags = %v, want [pricing]", got.Tags)
+	}
+	if got.Owner != "team-platform" {
+		t.Errorf("Owner = %q, want %q", got.Owner, "team-platform")
+	}
+	if got.Hypothesis != "updated hypothesis" {
+		t.Errorf("Hypothesis = %q, want %q", got.Hypothesis, "updated hypothesis")
 	}
 	if got.UpdatedAt.Before(created.CreatedAt) {
 		t.Error("UpdatedAt should not be before CreatedAt")

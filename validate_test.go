@@ -121,6 +121,33 @@ func TestExperimentValidate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "valid tags",
+			exp: Experiment{
+				Slug:     "test",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "a", Weight: 1}},
+				Tags:     []string{"checkout", "mobile"},
+			},
+		},
+		{
+			name: "empty tag rejected",
+			exp: Experiment{
+				Slug:     "test",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "a", Weight: 1}},
+				Tags:     []string{"checkout", ""},
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil tags valid",
+			exp: Experiment{
+				Slug:     "test",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "a", Weight: 1}},
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -64,11 +64,15 @@ curl -X POST localhost:8080/admin/v1/experiments \
       {"name": "new_checkout", "weight": 50}
     ],
     "overrides": {"user-vip": "new_checkout"},
-    "seed": "checkout-flow-v2"
+    "seed": "checkout-flow-v2",
+    "description": "Test the new checkout flow",
+    "tags": ["checkout", "q1-2026"],
+    "owner": "team-growth",
+    "hypothesis": "New checkout improves conversion rate"
   }'
 ```
 
-Status must be one of: `draft`, `running`, `paused`, `stopped`. Seed is optional (defaults to slug).
+Status must be one of: `draft`, `running`, `paused`, `stopped`. Seed is optional (defaults to slug). Metadata fields (`description`, `tags`, `owner`, `hypothesis`) are all optional.
 
 | Method   | Endpoint                              | Description         |
 |----------|---------------------------------------|---------------------|
