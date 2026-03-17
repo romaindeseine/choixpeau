@@ -2,7 +2,6 @@ package pearcut
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 )
 
@@ -13,13 +12,13 @@ type CachedStore struct {
 }
 
 func NewCachedStore(inner Store) (*CachedStore, error) {
-	experiments, err := inner.List(ExperimentFilter{})
+	result, err := inner.List(ExperimentFilter{}, ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("warming cache: %w", err)
 	}
 
-	cache := make(map[string]Experiment, len(experiments))
-	for _, exp := range experiments {
+	cache := make(map[string]Experiment, len(result.Experiments))
+	for _, exp := range result.Experiments {
 		cache[exp.Slug] = exp
 	}
 
@@ -37,33 +36,20 @@ func (c *CachedStore) Get(slug string) (Experiment, error) {
 	return exp, nil
 }
 
-func (c *CachedStore) List(filter ExperimentFilter) ([]Experiment, error) {
+func (c *CachedStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	slugSet := make(map[string]struct{}, len(filter.Slugs))
-	for _, s := range filter.Slugs {
-		slugSet[s] = struct{}{}
-	}
-
-	var results []Experiment
+	all := make([]Experiment, 0, len(c.cache))
 	for _, exp := range c.cache {
-		if filter.Status != nil && exp.Status != *filter.Status {
-			continue
-		}
-		if len(slugSet) > 0 {
-			if _, ok := slugSet[exp.Slug]; !ok {
-				continue
-			}
-		}
-		results = append(results, exp)
+		all = append(all, exp)
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Slug < results[j].Slug
-	})
+	filtered := filterExperiments(all, filter)
+	sortExperiments(filtered, opts)
+	page, total := paginateExperiments(filtered, opts)
 
-	return results, nil
+	return ExperimentListResult{Experiments: page, Total: total}, nil
 }
 
 func (c *CachedStore) Create(exp Experiment) error {

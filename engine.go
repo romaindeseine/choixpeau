@@ -48,13 +48,13 @@ func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs 
 		filter.Slugs = experimentSlugs
 	}
 
-	experiments, err := e.store.List(filter)
+	result, err := e.store.List(filter, ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("listing experiments: %w", err)
 	}
 
-	assignments := make([]Assignment, 0, len(experiments))
-	for _, exp := range experiments {
+	assignments := make([]Assignment, 0, len(result.Experiments))
+	for _, exp := range result.Experiments {
 		a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
 		e.publisher.Publish(ctx, AssignmentEvent{
 			Type:       "assignment",
