@@ -20,7 +20,8 @@ curl -s -X POST localhost:8080/admin/v1/experiments \
   -d '{"slug":"checkout-flow","status":"running","variants":[{"name":"control","weight":50},{"name":"new_checkout","weight":50}]}'
 
 # Assign a user
-curl -s "localhost:8080/api/v1/assign?experiment=checkout-flow&user_id=user-42"
+curl -s -X POST localhost:8080/api/v1/assign \
+  -d '{"experiment":"checkout-flow","user_id":"user-42"}'
 ```
 
 ## API Reference
@@ -28,12 +29,15 @@ curl -s "localhost:8080/api/v1/assign?experiment=checkout-flow&user_id=user-42"
 ### Assign
 
 ```bash
-curl "localhost:8080/api/v1/assign?experiment=checkout-flow&user_id=user-42"
+curl -X POST localhost:8080/api/v1/assign \
+  -d '{"experiment":"checkout-flow","user_id":"user-42"}'
 ```
 
 ```json
 {"experiment":"checkout-flow","variant":"control","user_id":"user-42"}
 ```
+
+Pass `"attributes": {"country": "FR"}` for audience targeting. Returns **204 No Content** if the user doesn't match targeting rules.
 
 ### Bulk assign
 
@@ -48,7 +52,7 @@ curl -X POST localhost:8080/api/v1/assign/bulk \
 {"user_id":"user-42","assignments":{"checkout-flow":"control","onboarding":"variant_b"}}
 ```
 
-Pass `"experiments": ["checkout-flow"]` to restrict to specific experiments.
+Pass `"experiments": ["checkout-flow"]` to restrict to specific experiments. Pass `"attributes": {...}` for targeting.
 
 ### Admin
 
@@ -65,6 +69,9 @@ curl -X POST localhost:8080/admin/v1/experiments \
     ],
     "overrides": {"user-vip": "new_checkout"},
     "seed": "checkout-flow-v2",
+    "targeting_rules": [
+      {"attribute": "country", "operator": "in", "values": ["FR", "BE"]}
+    ],
     "description": "Test the new checkout flow",
     "tags": ["checkout", "q1-2026"],
     "owner": "team-growth",
@@ -72,7 +79,7 @@ curl -X POST localhost:8080/admin/v1/experiments \
   }'
 ```
 
-Status must be one of: `draft`, `running`, `paused`, `stopped`. Seed is optional (defaults to slug). Metadata fields (`description`, `tags`, `owner`, `hypothesis`) are all optional.
+Status must be one of: `draft`, `running`, `paused`, `stopped`. Seed is optional (defaults to slug). Targeting rules use operators `in` and `not_in` with AND logic; overrides bypass targeting. Metadata fields (`description`, `tags`, `owner`, `hypothesis`) are all optional.
 
 | Method   | Endpoint                              | Description         |
 |----------|---------------------------------------|---------------------|
@@ -154,9 +161,6 @@ MurmurHash3("checkout-flow/user-42") → 2847103 % 100 → 47
 ```
 
 Same input always produces the same variant — no database lookup needed.
-
-**Overrides** bypass hashing: a user can be forced into a specific variant.
-**Seed** defaults to the experiment slug but can be changed to re-shuffle all assignments.
 
 ## License
 

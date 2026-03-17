@@ -26,10 +26,11 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 
 ## Domain vocabulary
 
-- **Experiment** — an A/B test identified by a unique `slug`. Has a status (`draft` → `running` → `paused` → `stopped`), a list of variants, optional overrides, and optional metadata (`description`, `tags`, `owner`, `hypothesis`).
+- **Experiment** — an A/B test identified by a unique `slug`. Has a status (`draft` → `running` → `paused` → `stopped`), a list of variants, optional overrides, optional targeting rules, and optional metadata (`description`, `tags`, `owner`, `hypothesis`).
 - **Variant** — one option within an experiment (e.g. `control`, `new_checkout`). Defined by a `name` and a `weight` (relative traffic allocation).
 - **Assignment** — the result of an assignment: maps a `user_id` to a `variant` for a given `experiment`.
-- **Override** — forced assignment of a `user_id` to a specific variant, takes priority over hash.
+- **Override** — forced assignment of a `user_id` to a specific variant, takes priority over hash and targeting.
+- **Targeting Rule** — condition on user attributes that must be met for assignment. Each rule has an `attribute`, an `operator` (`in`, `not_in`), and `values`. All rules use AND logic. Overrides bypass targeting.
 - **Seed** — salt used for deterministic hashing (defaults to the experiment slug).
 
 ## Code structure
@@ -39,7 +40,7 @@ Flat layout — all Go files at the root in `package pearcut`, one file per resp
 - `model.go` — domain structs (Experiment, Variant, Assignment, AssignmentEvent), interfaces (Store, Engine, EventPublisher)
 - `errors.go` — sentinel errors
 - `validate.go` — validation methods on Experiment
-- `engine.go` — assignment engine (lookup, overrides, hash-based variant selection, event publishing)
+- `engine.go` — assignment engine (lookup, overrides, targeting evaluation, hash-based variant selection, event publishing)
 - `assign.go` — HTTP handlers for assign and bulk assign endpoints
 - `admin.go` — admin handlers (CRUD experiments under `/admin/v1`)
 - `server.go` — Server struct, NewServer, RegisterRoutes, writeJSON helper, health handler
