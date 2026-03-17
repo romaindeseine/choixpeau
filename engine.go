@@ -55,6 +55,10 @@ func (e *engine) Assign(ctx context.Context, userID string, experimentSlug strin
 		return Assignment{}, ErrUserNotTargeted
 	}
 
+	if !isIncludedByTraffic(exp, userID) {
+		return Assignment{}, ErrUserExcludedByTraffic
+	}
+
 	a := Assignment{Experiment: exp.Slug, Variant: hashVariant(exp, userID)}
 	e.publisher.Publish(ctx, AssignmentEvent{
 		Type:       "assignment",
@@ -93,6 +97,9 @@ func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs 
 				)
 				continue
 			}
+			if !isIncludedByTraffic(exp, userID) {
+				continue
+			}
 			variant = hashVariant(exp, userID)
 		}
 
@@ -124,6 +131,11 @@ func matchesTargeting(rules []TargetingRule, attributes map[string]string) bool 
 		}
 	}
 	return true
+}
+
+func isIncludedByTraffic(exp Experiment, userID string) bool {
+	h := murmur3.Sum32([]byte("_traffic_" + exp.Seed + userID))
+	return h%100 < uint32(exp.TrafficPercentage)
 }
 
 func hashVariant(exp Experiment, userID string) string {

@@ -171,6 +171,46 @@ func TestEngineAssign(t *testing.T) {
 			userID:      "user-42",
 			wantVariant: "treatment",
 		},
+		{
+			name: "traffic_percentage 100 assigns normally",
+			exps: []Experiment{{
+				Slug:              "traffic-100",
+				Seed:              "traffic-100",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "control", Weight: 100}},
+				TrafficPercentage: 100,
+			}},
+			slug:        "traffic-100",
+			userID:      "user-1",
+			wantVariant: "control",
+		},
+		{
+			name: "traffic_percentage excludes user",
+			exps: []Experiment{{
+				Slug:              "traffic-excl",
+				Seed:              "traffic-excl",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "control", Weight: 100}},
+				TrafficPercentage: 1,
+			}},
+			slug:    "traffic-excl",
+			userID:  "user-excluded-test",
+			wantErr: ErrUserExcludedByTraffic,
+		},
+		{
+			name: "override bypasses traffic percentage",
+			exps: []Experiment{{
+				Slug:              "traffic-override",
+				Seed:              "traffic-override",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+				Overrides:         map[string]string{"user-42": "treatment"},
+				TrafficPercentage: 1,
+			}},
+			slug:        "traffic-override",
+			userID:      "user-42",
+			wantVariant: "treatment",
+		},
 	}
 
 	for _, tt := range tests {
@@ -257,6 +297,33 @@ func TestEngineAssignDistribution(t *testing.T) {
 	}
 }
 
+func TestEngineTrafficPercentageDistribution(t *testing.T) {
+	store := newTestStore(t, []Experiment{{
+		Slug:              "traffic-dist",
+		Seed:              "traffic-dist",
+		Status:            StatusRunning,
+		Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+		TrafficPercentage: 20,
+	}})
+	e := NewEngine(store, nil)
+
+	assigned := 0
+	n := 10000
+	for i := 0; i < n; i++ {
+		_, err := e.Assign(context.Background(), fmt.Sprintf("user-%d", i), "traffic-dist", nil)
+		if err == nil {
+			assigned++
+		} else if err != ErrUserExcludedByTraffic {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+
+	ratio := float64(assigned) / float64(n)
+	if ratio < 0.15 || ratio > 0.25 {
+		t.Errorf("traffic_percentage=20: got %.2f%% assigned, expected ~20%%", ratio*100)
+	}
+}
+
 func TestEngineBulkAssign(t *testing.T) {
 	allExps := []Experiment{
 		{Slug: "running-1", Seed: "running-1", Status: StatusRunning, Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}}},
@@ -301,6 +368,22 @@ func TestEngineBulkAssign(t *testing.T) {
 			exps:      []Experiment{{Slug: "draft", Seed: "draft", Status: StatusDraft, Variants: []Variant{{Name: "c", Weight: 100}}}},
 			slugs:     nil,
 			wantSlugs: nil,
+		},
+		{
+			name: "traffic percentage skips excluded experiments",
+			exps: []Experiment{
+				{
+					Slug: "traffic-zero", Seed: "traffic-zero", Status: StatusRunning,
+					Variants:          []Variant{{Name: "control", Weight: 100}},
+					TrafficPercentage: 1, // near-zero traffic
+				},
+				{
+					Slug: "traffic-full", Seed: "traffic-full", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
+				},
+			},
+			slugs:     nil,
+			wantSlugs: []string{"traffic-full"},
 		},
 		{
 			name: "targeting skips non-matching experiments",
