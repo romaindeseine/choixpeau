@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 func isValidStatus(s ExperimentStatus) bool {
@@ -15,10 +16,20 @@ func isValidStatus(s ExperimentStatus) bool {
 	return false
 }
 
+type ListExperimentsResponse struct {
+	Data       []Experiment `json:"data"`
+	Page       int          `json:"page"`
+	PerPage    int          `json:"per_page"`
+	Total      int          `json:"total"`
+	TotalPages int          `json:"total_pages"`
+}
+
 func (s *Server) listExperiments(w http.ResponseWriter, r *http.Request) {
 	var filter ExperimentFilter
+	var opts ListOptions
+	q := r.URL.Query()
 
-	if raw := r.URL.Query().Get("status"); raw != "" {
+	if raw := q.Get("status"); raw != "" {
 		status := ExperimentStatus(raw)
 		if !isValidStatus(status) {
 			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid status"})
@@ -27,14 +38,72 @@ func (s *Server) listExperiments(w http.ResponseWriter, r *http.Request) {
 		filter.Status = &status
 	}
 
-	experiments, err := s.store.List(filter)
+	filter.Search = q.Get("search")
+
+	page, perPage := 1, 20
+	if raw := q.Get("page"); raw != "" {
+		p, err := strconv.Atoi(raw)
+		if err != nil || p < 1 {
+			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid page parameter"})
+			return
+		}
+		page = p
+	}
+	if raw := q.Get("per_page"); raw != "" {
+		pp, err := strconv.Atoi(raw)
+		if err != nil || pp < 1 || pp > 100 {
+			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid per_page parameter (1-100)"})
+			return
+		}
+		perPage = pp
+	}
+
+	sortCol := "created_at"
+	if raw := q.Get("sort"); raw != "" {
+		switch raw {
+		case "slug", "created_at", "updated_at":
+			sortCol = raw
+		default:
+			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid sort parameter (slug, created_at, updated_at)"})
+			return
+		}
+	}
+
+	order := "desc"
+	if raw := q.Get("order"); raw != "" {
+		switch raw {
+		case "asc", "desc":
+			order = raw
+		default:
+			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid order parameter (asc, desc)"})
+			return
+		}
+	}
+
+	opts.Page = page
+	opts.PerPage = perPage
+	opts.Sort = sortCol
+	opts.Order = order
+
+	result, err := s.store.List(filter, opts)
 	if err != nil {
 		slog.Error("failed to list experiments", "error", err)
 		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, experiments)
+	totalPages := 0
+	if result.Total > 0 {
+		totalPages = (result.Total + perPage - 1) / perPage
+	}
+
+	writeJSON(w, http.StatusOK, ListExperimentsResponse{
+		Data:       result.Experiments,
+		Page:       page,
+		PerPage:    perPage,
+		Total:      result.Total,
+		TotalPages: totalPages,
+	})
 }
 
 func (s *Server) getExperiment(w http.ResponseWriter, r *http.Request) {
