@@ -36,7 +36,7 @@ func (c *CachedStore) Get(slug string) (Experiment, error) {
 	return exp, nil
 }
 
-func (c *CachedStore) List(filter ExperimentFilter, opts ListOptions) (ListResult, error) {
+func (c *CachedStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -49,7 +49,7 @@ func (c *CachedStore) List(filter ExperimentFilter, opts ListOptions) (ListResul
 	sortExperiments(filtered, opts)
 	page, total := paginateExperiments(filtered, opts)
 
-	return ListResult{Experiments: page, Total: total}, nil
+	return ExperimentListResult{Experiments: page, Total: total}, nil
 }
 
 func (c *CachedStore) Create(exp Experiment) error {
