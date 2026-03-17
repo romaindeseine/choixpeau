@@ -39,7 +39,7 @@ type ErrorResponse struct {
 
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", healthHandler)
-	mux.HandleFunc("GET /api/v1/assign", s.assignHandler)
+	mux.HandleFunc("POST /api/v1/assign", s.assignHandler)
 	mux.HandleFunc("POST /api/v1/assign/bulk", s.bulkAssignHandler)
 
 	mux.HandleFunc("GET /admin/v1/experiments", s.listExperiments)
