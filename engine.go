@@ -3,6 +3,8 @@ package pearcut
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/twmb/murmur3"
@@ -20,7 +22,7 @@ func NewEngine(store ReadStore, publisher EventPublisher) Engine {
 	return &engine{store: store, publisher: publisher}
 }
 
-func (e *engine) Assign(ctx context.Context, experimentSlug string, userID string) (Assignment, error) {
+func (e *engine) Assign(ctx context.Context, userID string, experimentSlug string, attributes map[string]string) (Assignment, error) {
 	exp, err := e.store.Get(experimentSlug)
 	if err != nil {
 		return Assignment{}, err
@@ -30,7 +32,30 @@ func (e *engine) Assign(ctx context.Context, experimentSlug string, userID strin
 		return Assignment{}, ErrExperimentNotRunning
 	}
 
-	a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
+	// Overrides bypass targeting
+	if v, ok := exp.Overrides[userID]; ok {
+		a := Assignment{Experiment: exp.Slug, Variant: v}
+		e.publisher.Publish(ctx, AssignmentEvent{
+			Type:       "assignment",
+			UserID:     userID,
+			Experiment: a.Experiment,
+			Variant:    a.Variant,
+			Timestamp:  time.Now(),
+		})
+		return a, nil
+	}
+
+	if !matchesTargeting(exp.TargetingRules, attributes) {
+		slog.Warn("user does not match targeting rules",
+			"experiment", exp.Slug,
+			"user_id", userID,
+			"targeting_rules", exp.TargetingRules,
+			"provided_attributes", attributes,
+		)
+		return Assignment{}, ErrUserNotTargeted
+	}
+
+	a := Assignment{Experiment: exp.Slug, Variant: hashVariant(exp, userID)}
 	e.publisher.Publish(ctx, AssignmentEvent{
 		Type:       "assignment",
 		UserID:     userID,
@@ -41,7 +66,7 @@ func (e *engine) Assign(ctx context.Context, experimentSlug string, userID strin
 	return a, nil
 }
 
-func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs []string) ([]Assignment, error) {
+func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs []string, attributes map[string]string) ([]Assignment, error) {
 	status := StatusRunning
 	filter := ExperimentFilter{Status: &status}
 	if len(experimentSlugs) > 0 {
@@ -55,7 +80,23 @@ func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs 
 
 	assignments := make([]Assignment, 0, len(result.Experiments))
 	for _, exp := range result.Experiments {
-		a := Assignment{Experiment: exp.Slug, Variant: assignVariant(exp, userID)}
+		var variant string
+		if v, ok := exp.Overrides[userID]; ok {
+			variant = v
+		} else {
+			if !matchesTargeting(exp.TargetingRules, attributes) {
+				slog.Warn("user does not match targeting rules",
+					"experiment", exp.Slug,
+					"user_id", userID,
+					"targeting_rules", exp.TargetingRules,
+					"provided_attributes", attributes,
+				)
+				continue
+			}
+			variant = hashVariant(exp, userID)
+		}
+
+		a := Assignment{Experiment: exp.Slug, Variant: variant}
 		e.publisher.Publish(ctx, AssignmentEvent{
 			Type:       "assignment",
 			UserID:     userID,
@@ -68,11 +109,24 @@ func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs 
 	return assignments, nil
 }
 
-func assignVariant(exp Experiment, userID string) string {
-	if v, ok := exp.Overrides[userID]; ok {
-		return v
+func matchesTargeting(rules []TargetingRule, attributes map[string]string) bool {
+	for _, rule := range rules {
+		val, ok := attributes[rule.Attribute]
+		switch rule.Operator {
+		case OperatorIn:
+			if !ok || !slices.Contains(rule.Values, val) {
+				return false
+			}
+		case OperatorNotIn:
+			if ok && slices.Contains(rule.Values, val) {
+				return false
+			}
+		}
 	}
+	return true
+}
 
+func hashVariant(exp Experiment, userID string) string {
 	h := murmur3.Sum32([]byte(exp.Seed + userID))
 
 	var totalWeight int
