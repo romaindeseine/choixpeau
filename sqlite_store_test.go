@@ -348,6 +348,48 @@ func TestSQLiteStoreDelete(t *testing.T) {
 	}
 }
 
+func TestSQLiteStoreTargetingRulesRoundTrip(t *testing.T) {
+	s := newTestSQLiteStore(t)
+	exp := Experiment{
+		Slug:     "targeted-exp",
+		Status:   StatusRunning,
+		Seed:     "targeted-exp",
+		Variants: []Variant{{Name: "control", Weight: 100}},
+		TargetingRules: []TargetingRule{
+			{Attribute: "country", Operator: OperatorIn, Values: []string{"FR", "US"}},
+			{Attribute: "plan", Operator: OperatorNotIn, Values: []string{"free"}},
+		},
+	}
+
+	if err := s.Create(exp); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := s.Get("targeted-exp")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+
+	if len(got.TargetingRules) != 2 {
+		t.Fatalf("TargetingRules count = %d, want 2", len(got.TargetingRules))
+	}
+	if got.TargetingRules[0].Attribute != "country" {
+		t.Errorf("Rule[0].Attribute = %q, want %q", got.TargetingRules[0].Attribute, "country")
+	}
+	if got.TargetingRules[0].Operator != OperatorIn {
+		t.Errorf("Rule[0].Operator = %q, want %q", got.TargetingRules[0].Operator, OperatorIn)
+	}
+	if len(got.TargetingRules[0].Values) != 2 {
+		t.Errorf("Rule[0].Values count = %d, want 2", len(got.TargetingRules[0].Values))
+	}
+	if got.TargetingRules[1].Attribute != "plan" {
+		t.Errorf("Rule[1].Attribute = %q, want %q", got.TargetingRules[1].Attribute, "plan")
+	}
+	if got.TargetingRules[1].Operator != OperatorNotIn {
+		t.Errorf("Rule[1].Operator = %q, want %q", got.TargetingRules[1].Operator, OperatorNotIn)
+	}
+}
+
 func TestSQLiteStoreDeleteNotFound(t *testing.T) {
 	s := newTestSQLiteStore(t)
 

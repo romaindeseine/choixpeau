@@ -148,6 +148,62 @@ func TestExperimentValidate(t *testing.T) {
 				Variants: []Variant{{Name: "a", Weight: 1}},
 			},
 		},
+		{
+			name: "valid targeting rule in",
+			exp: Experiment{
+				Slug:           "test",
+				Status:         StatusRunning,
+				Variants:       []Variant{{Name: "a", Weight: 1}},
+				TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+			},
+		},
+		{
+			name: "valid targeting rule not_in",
+			exp: Experiment{
+				Slug:           "test",
+				Status:         StatusRunning,
+				Variants:       []Variant{{Name: "a", Weight: 1}},
+				TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorNotIn, Values: []string{"CN"}}},
+			},
+		},
+		{
+			name: "targeting rule empty attribute",
+			exp: Experiment{
+				Slug:           "test",
+				Status:         StatusRunning,
+				Variants:       []Variant{{Name: "a", Weight: 1}},
+				TargetingRules: []TargetingRule{{Attribute: "", Operator: OperatorIn, Values: []string{"FR"}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "targeting rule invalid operator",
+			exp: Experiment{
+				Slug:           "test",
+				Status:         StatusRunning,
+				Variants:       []Variant{{Name: "a", Weight: 1}},
+				TargetingRules: []TargetingRule{{Attribute: "country", Operator: "eq", Values: []string{"FR"}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "targeting rule empty values",
+			exp: Experiment{
+				Slug:           "test",
+				Status:         StatusRunning,
+				Variants:       []Variant{{Name: "a", Weight: 1}},
+				TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil targeting rules valid",
+			exp: Experiment{
+				Slug:     "test",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "a", Weight: 1}},
+			},
+		},
 	}
 
 	for _, tt := range tests {

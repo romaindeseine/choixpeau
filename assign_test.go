@@ -17,60 +17,80 @@ type mockEngine struct {
 	bulkErr         error
 }
 
-func (m *mockEngine) Assign(_ context.Context, experimentSlug string, userID string) (Assignment, error) {
+func (m *mockEngine) Assign(_ context.Context, userID string, experimentSlug string, attributes map[string]string) (Assignment, error) {
 	return m.assignment, m.err
 }
 
-func (m *mockEngine) BulkAssign(_ context.Context, userID string, experimentSlugs []string) ([]Assignment, error) {
+func (m *mockEngine) BulkAssign(_ context.Context, userID string, experimentSlugs []string, attributes map[string]string) ([]Assignment, error) {
 	return m.bulkAssignments, m.bulkErr
 }
 
 func TestAssignHandler(t *testing.T) {
 	tests := []struct {
 		name       string
-		query      string
+		body       string
 		engine     *mockEngine
 		wantStatus int
 		wantBody   jsonBody
 	}{
 		{
 			name:       "success",
-			query:      "experiment=checkout-redesign&user_id=u_123",
+			body:       `{"experiment":"checkout-redesign","user_id":"u_123"}`,
+			engine:     &mockEngine{assignment: Assignment{Experiment: "checkout-redesign", Variant: "new_checkout"}},
+			wantStatus: http.StatusOK,
+			wantBody:   jsonBody{"experiment": "checkout-redesign", "variant": "new_checkout", "user_id": "u_123"},
+		},
+		{
+			name:       "success with attributes",
+			body:       `{"experiment":"checkout-redesign","user_id":"u_123","attributes":{"country":"FR"}}`,
 			engine:     &mockEngine{assignment: Assignment{Experiment: "checkout-redesign", Variant: "new_checkout"}},
 			wantStatus: http.StatusOK,
 			wantBody:   jsonBody{"experiment": "checkout-redesign", "variant": "new_checkout", "user_id": "u_123"},
 		},
 		{
 			name:       "missing experiment",
-			query:      "user_id=u_123",
+			body:       `{"user_id":"u_123"}`,
 			engine:     &mockEngine{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   jsonBody{"error": "missing required parameter: experiment"},
+			wantBody:   jsonBody{"error": "missing required field: experiment"},
 		},
 		{
 			name:       "missing user_id",
-			query:      "experiment=checkout-redesign",
+			body:       `{"experiment":"checkout-redesign"}`,
 			engine:     &mockEngine{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   jsonBody{"error": "missing required parameter: user_id"},
+			wantBody:   jsonBody{"error": "missing required field: user_id"},
+		},
+		{
+			name:       "invalid json",
+			body:       `not json`,
+			engine:     &mockEngine{},
+			wantStatus: http.StatusBadRequest,
+			wantBody:   jsonBody{"error": "invalid json body"},
 		},
 		{
 			name:       "experiment not found",
-			query:      "experiment=unknown&user_id=u_123",
+			body:       `{"experiment":"unknown","user_id":"u_123"}`,
 			engine:     &mockEngine{err: ErrExperimentNotFound},
 			wantStatus: http.StatusNotFound,
 			wantBody:   jsonBody{"error": "experiment not found"},
 		},
 		{
 			name:       "experiment not running",
-			query:      "experiment=checkout-redesign&user_id=u_123",
+			body:       `{"experiment":"checkout-redesign","user_id":"u_123"}`,
 			engine:     &mockEngine{err: ErrExperimentNotRunning},
 			wantStatus: http.StatusConflict,
 			wantBody:   jsonBody{"error": "experiment not running"},
 		},
 		{
+			name:       "user not targeted",
+			body:       `{"experiment":"checkout-redesign","user_id":"u_123","attributes":{"country":"US"}}`,
+			engine:     &mockEngine{err: ErrUserNotTargeted},
+			wantStatus: http.StatusNoContent,
+		},
+		{
 			name:       "engine error",
-			query:      "experiment=checkout-redesign&user_id=u_123",
+			body:       `{"experiment":"checkout-redesign","user_id":"u_123"}`,
 			engine:     &mockEngine{err: errors.New("something went wrong")},
 			wantStatus: http.StatusInternalServerError,
 			wantBody:   jsonBody{"error": "internal server error"},
@@ -80,7 +100,8 @@ func TestAssignHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := &Server{engine: tt.engine}
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/assign?"+tt.query, nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/assign", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
 			srv.assignHandler(w, req)
@@ -89,13 +110,15 @@ func TestAssignHandler(t *testing.T) {
 				t.Fatalf("expected status %d, got %d", tt.wantStatus, w.Code)
 			}
 
-			var body jsonBody
-			if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
-				t.Fatalf("invalid json: %v", err)
-			}
-			for key, want := range tt.wantBody {
-				if body[key] != want {
-					t.Errorf("expected %s=%s, got %s", key, want, body[key])
+			if tt.wantBody != nil {
+				var body jsonBody
+				if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+					t.Fatalf("invalid json: %v", err)
+				}
+				for key, want := range tt.wantBody {
+					if body[key] != want {
+						t.Errorf("expected %s=%s, got %s", key, want, body[key])
+					}
 				}
 			}
 		})
@@ -137,6 +160,18 @@ func TestBulkAssignHandler(t *testing.T) {
 		{
 			name:       "success with all running",
 			body:       `{"user_id":"u_123"}`,
+			engine:     &mockEngine{bulkAssignments: []Assignment{{Experiment: "exp-1", Variant: "control"}}},
+			wantStatus: http.StatusOK,
+			wantCheck: func(t *testing.T, body map[string]any) {
+				assignments := body["assignments"].(map[string]any)
+				if len(assignments) != 1 {
+					t.Fatalf("expected 1 assignment, got %d", len(assignments))
+				}
+			},
+		},
+		{
+			name:       "success with attributes",
+			body:       `{"user_id":"u_123","attributes":{"country":"FR"}}`,
 			engine:     &mockEngine{bulkAssignments: []Assignment{{Experiment: "exp-1", Variant: "control"}}},
 			wantStatus: http.StatusOK,
 			wantCheck: func(t *testing.T, body map[string]any) {

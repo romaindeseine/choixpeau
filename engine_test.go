@@ -38,6 +38,7 @@ func TestEngineAssign(t *testing.T) {
 		exps        []Experiment
 		slug        string
 		userID      string
+		attributes  map[string]string
 		wantVariant string
 		wantErr     error
 	}{
@@ -107,13 +108,76 @@ func TestEngineAssign(t *testing.T) {
 			slug:   "exp-1",
 			userID: "user-1",
 		},
+		{
+			name: "targeting match",
+			exps: []Experiment{{
+				Slug:     "targeted",
+				Seed:     "targeted",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
+				TargetingRules: []TargetingRule{
+					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR", "US"}},
+				},
+			}},
+			slug:        "targeted",
+			userID:      "user-1",
+			attributes:  map[string]string{"country": "FR"},
+			wantVariant: "control",
+		},
+		{
+			name: "targeting mismatch",
+			exps: []Experiment{{
+				Slug:     "targeted-miss",
+				Seed:     "targeted-miss",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
+				TargetingRules: []TargetingRule{
+					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
+				},
+			}},
+			slug:       "targeted-miss",
+			userID:     "user-1",
+			attributes: map[string]string{"country": "US"},
+			wantErr:    ErrUserNotTargeted,
+		},
+		{
+			name: "targeting no attributes provided",
+			exps: []Experiment{{
+				Slug:     "targeted-none",
+				Seed:     "targeted-none",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
+				TargetingRules: []TargetingRule{
+					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
+				},
+			}},
+			slug:    "targeted-none",
+			userID:  "user-1",
+			wantErr: ErrUserNotTargeted,
+		},
+		{
+			name: "override bypasses targeting",
+			exps: []Experiment{{
+				Slug:      "targeted-override",
+				Seed:      "targeted-override",
+				Status:    StatusRunning,
+				Variants:  []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+				Overrides: map[string]string{"user-42": "treatment"},
+				TargetingRules: []TargetingRule{
+					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
+				},
+			}},
+			slug:        "targeted-override",
+			userID:      "user-42",
+			wantVariant: "treatment",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := newTestStore(t, tt.exps)
 			e := NewEngine(store, nil)
-			got, err := e.Assign(context.Background(), tt.slug, tt.userID)
+			got, err := e.Assign(context.Background(), tt.userID, tt.slug, tt.attributes)
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -150,13 +214,13 @@ func TestEngineAssignDeterminism(t *testing.T) {
 	}})
 	e := NewEngine(store, nil)
 
-	first, err := e.Assign(context.Background(), "det-exp", "user-123")
+	first, err := e.Assign(context.Background(), "user-123", "det-exp", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	for i := 0; i < 100; i++ {
-		got, err := e.Assign(context.Background(), "det-exp", "user-123")
+		got, err := e.Assign(context.Background(), "user-123", "det-exp", nil)
 		if err != nil {
 			t.Fatalf("unexpected error on iteration %d: %v", i, err)
 		}
@@ -178,7 +242,7 @@ func TestEngineAssignDistribution(t *testing.T) {
 	counts := map[string]int{}
 	n := 10000
 	for i := 0; i < n; i++ {
-		a, err := e.Assign(context.Background(), "dist-exp", fmt.Sprintf("user-%d", i))
+		a, err := e.Assign(context.Background(), fmt.Sprintf("user-%d", i), "dist-exp", nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -202,10 +266,11 @@ func TestEngineBulkAssign(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		exps      []Experiment
-		slugs     []string
-		wantSlugs []string
+		name       string
+		exps       []Experiment
+		slugs      []string
+		attributes map[string]string
+		wantSlugs  []string
 	}{
 		{
 			name:      "all running experiments",
@@ -237,13 +302,30 @@ func TestEngineBulkAssign(t *testing.T) {
 			slugs:     nil,
 			wantSlugs: nil,
 		},
+		{
+			name: "targeting skips non-matching experiments",
+			exps: []Experiment{
+				{
+					Slug: "targeted", Seed: "targeted", Status: StatusRunning,
+					Variants:       []Variant{{Name: "control", Weight: 100}},
+					TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+				},
+				{
+					Slug: "untargeted", Seed: "untargeted", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
+				},
+			},
+			slugs:      nil,
+			attributes: map[string]string{"country": "US"},
+			wantSlugs:  []string{"untargeted"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := newTestStore(t, tt.exps)
 			e := NewEngine(store, nil)
-			assignments, err := e.BulkAssign(context.Background(), "user-1", tt.slugs)
+			assignments, err := e.BulkAssign(context.Background(), "user-1", tt.slugs, tt.attributes)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -285,8 +367,8 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 	n := 100
 	for i := 0; i < n; i++ {
 		uid := fmt.Sprintf("user-%d", i)
-		a1, _ := e1.Assign(context.Background(), "seed-exp", uid)
-		a2, _ := e2.Assign(context.Background(), "seed-exp", uid)
+		a1, _ := e1.Assign(context.Background(), uid, "seed-exp", nil)
+		a2, _ := e2.Assign(context.Background(), uid, "seed-exp", nil)
 		if a1.Variant != a2.Variant {
 			diffs++
 		}
@@ -294,5 +376,84 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 
 	if diffs == 0 {
 		t.Error("different seeds produced identical assignments for all users")
+	}
+}
+
+func TestMatchesTargeting(t *testing.T) {
+	tests := []struct {
+		name       string
+		rules      []TargetingRule
+		attributes map[string]string
+		want       bool
+	}{
+		{
+			name:       "no rules matches everything",
+			rules:      nil,
+			attributes: nil,
+			want:       true,
+		},
+		{
+			name:       "in operator matches",
+			rules:      []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR", "US"}}},
+			attributes: map[string]string{"country": "FR"},
+			want:       true,
+		},
+		{
+			name:       "in operator rejects",
+			rules:      []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+			attributes: map[string]string{"country": "US"},
+			want:       false,
+		},
+		{
+			name:       "in operator missing key",
+			rules:      []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+			attributes: map[string]string{"plan": "premium"},
+			want:       false,
+		},
+		{
+			name:       "not_in operator matches",
+			rules:      []TargetingRule{{Attribute: "country", Operator: OperatorNotIn, Values: []string{"CN"}}},
+			attributes: map[string]string{"country": "FR"},
+			want:       true,
+		},
+		{
+			name:       "not_in operator rejects",
+			rules:      []TargetingRule{{Attribute: "country", Operator: OperatorNotIn, Values: []string{"CN", "RU"}}},
+			attributes: map[string]string{"country": "CN"},
+			want:       false,
+		},
+		{
+			name:       "not_in operator missing key passes",
+			rules:      []TargetingRule{{Attribute: "country", Operator: OperatorNotIn, Values: []string{"CN"}}},
+			attributes: nil,
+			want:       true,
+		},
+		{
+			name: "multiple rules AND logic all pass",
+			rules: []TargetingRule{
+				{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
+				{Attribute: "plan", Operator: OperatorIn, Values: []string{"premium"}},
+			},
+			attributes: map[string]string{"country": "FR", "plan": "premium"},
+			want:       true,
+		},
+		{
+			name: "multiple rules AND logic one fails",
+			rules: []TargetingRule{
+				{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
+				{Attribute: "plan", Operator: OperatorIn, Values: []string{"premium"}},
+			},
+			attributes: map[string]string{"country": "FR", "plan": "free"},
+			want:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchesTargeting(tt.rules, tt.attributes)
+			if got != tt.want {
+				t.Errorf("matchesTargeting() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
