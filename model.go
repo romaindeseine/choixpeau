@@ -35,19 +35,19 @@ type TargetingRule struct {
 }
 
 type Experiment struct {
-	Slug              string            `json:"slug"`
-	Status            ExperimentStatus  `json:"status"`
-	Variants          []Variant         `json:"variants"`
-	Overrides         map[string]string `json:"overrides,omitempty"`
-	Seed              string            `json:"seed,omitempty"`
-	TargetingRules    []TargetingRule   `json:"targeting_rules,omitempty"`
-	ExclusionPercentage int             `json:"exclusion_percentage"`
-	Description       string            `json:"description,omitempty"`
-	Tags              []string          `json:"tags,omitempty"`
-	Owner             string            `json:"owner,omitempty"`
-	Hypothesis        string            `json:"hypothesis,omitempty"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
+	Slug                string            `json:"slug"`
+	Status              ExperimentStatus  `json:"status"`
+	Variants            []Variant         `json:"variants"`
+	Overrides           map[string]string `json:"overrides,omitempty"`
+	Seed                string            `json:"seed,omitempty"`
+	TargetingRules      []TargetingRule   `json:"targeting_rules,omitempty"`
+	ExclusionPercentage int               `json:"exclusion_percentage"`
+	Description         string            `json:"description,omitempty"`
+	Tags                []string          `json:"tags,omitempty"`
+	Owner               string            `json:"owner,omitempty"`
+	Hypothesis          string            `json:"hypothesis,omitempty"`
+	CreatedAt           time.Time         `json:"created_at"`
+	UpdatedAt           time.Time         `json:"updated_at"`
 }
 
 type ExperimentFilter struct {

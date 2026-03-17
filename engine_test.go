@@ -24,9 +24,9 @@ func newTestStore(t *testing.T, experiments []Experiment) Store {
 
 func TestEngineAssign(t *testing.T) {
 	runningExp := Experiment{
-		Slug:              "exp-1",
-		Seed:              "exp-1",
-		Status:            StatusRunning,
+		Slug:   "exp-1",
+		Seed:   "exp-1",
+		Status: StatusRunning,
 		Variants: []Variant{
 			{Name: "control", Weight: 50},
 			{Name: "treatment", Weight: 50},
@@ -52,9 +52,9 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "experiment is draft",
 			exps: []Experiment{{
-				Slug:              "draft-exp",
-				Status:            StatusDraft,
-						Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "draft-exp",
+				Status:   StatusDraft,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 			}},
 			slug:    "draft-exp",
 			userID:  "user-1",
@@ -63,9 +63,9 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "experiment is paused",
 			exps: []Experiment{{
-				Slug:              "paused-exp",
-				Status:            StatusPaused,
-						Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "paused-exp",
+				Status:   StatusPaused,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 			}},
 			slug:    "paused-exp",
 			userID:  "user-1",
@@ -74,9 +74,9 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "experiment is stopped",
 			exps: []Experiment{{
-				Slug:              "stopped-exp",
-				Status:            StatusStopped,
-						Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "stopped-exp",
+				Status:   StatusStopped,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 			}},
 			slug:    "stopped-exp",
 			userID:  "user-1",
@@ -85,11 +85,11 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "override hit",
 			exps: []Experiment{{
-				Slug:              "override-exp",
-				Seed:              "override-exp",
-				Status:            StatusRunning,
-						Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-				Overrides:         map[string]string{"user-42": "treatment"},
+				Slug:      "override-exp",
+				Seed:      "override-exp",
+				Status:    StatusRunning,
+				Variants:  []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+				Overrides: map[string]string{"user-42": "treatment"},
 			}},
 			slug:        "override-exp",
 			userID:      "user-42",
@@ -111,10 +111,10 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "targeting match",
 			exps: []Experiment{{
-				Slug:              "targeted",
-				Seed:              "targeted",
-				Status:            StatusRunning,
-						Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "targeted",
+				Seed:     "targeted",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 				TargetingRules: []TargetingRule{
 					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR", "US"}},
 				},
@@ -127,10 +127,10 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "targeting mismatch",
 			exps: []Experiment{{
-				Slug:              "targeted-miss",
-				Seed:              "targeted-miss",
-				Status:            StatusRunning,
-						Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "targeted-miss",
+				Seed:     "targeted-miss",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 				TargetingRules: []TargetingRule{
 					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
 				},
@@ -143,10 +143,10 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "targeting no attributes provided",
 			exps: []Experiment{{
-				Slug:              "targeted-none",
-				Seed:              "targeted-none",
-				Status:            StatusRunning,
-						Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "targeted-none",
+				Seed:     "targeted-none",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 				TargetingRules: []TargetingRule{
 					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
 				},
@@ -158,11 +158,11 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "override bypasses targeting",
 			exps: []Experiment{{
-				Slug:              "targeted-override",
-				Seed:              "targeted-override",
-				Status:            StatusRunning,
-						Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-				Overrides:         map[string]string{"user-42": "treatment"},
+				Slug:      "targeted-override",
+				Seed:      "targeted-override",
+				Status:    StatusRunning,
+				Variants:  []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+				Overrides: map[string]string{"user-42": "treatment"},
 				TargetingRules: []TargetingRule{
 					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}},
 				},
@@ -174,11 +174,11 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "traffic_percentage 100 assigns normally",
 			exps: []Experiment{{
-				Slug:              "traffic-100",
-				Seed:              "traffic-100",
-				Status:            StatusRunning,
-				Variants:          []Variant{{Name: "control", Weight: 100}},
-					}},
+				Slug:     "traffic-100",
+				Seed:     "traffic-100",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
+			}},
 			slug:        "traffic-100",
 			userID:      "user-1",
 			wantVariant: "control",
@@ -246,10 +246,10 @@ func TestEngineAssign(t *testing.T) {
 
 func TestEngineAssignDeterminism(t *testing.T) {
 	store := newTestStore(t, []Experiment{{
-		Slug:              "det-exp",
-		Seed:              "det-exp",
-		Status:            StatusRunning,
-		Variants:          []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
+		Slug:     "det-exp",
+		Seed:     "det-exp",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}})
 	e := NewEngine(store, nil)
 
@@ -271,10 +271,10 @@ func TestEngineAssignDeterminism(t *testing.T) {
 
 func TestEngineAssignDistribution(t *testing.T) {
 	store := newTestStore(t, []Experiment{{
-		Slug:              "dist-exp",
-		Seed:              "dist-exp",
-		Status:            StatusRunning,
-		Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+		Slug:     "dist-exp",
+		Seed:     "dist-exp",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 	}})
 	e := NewEngine(store, nil)
 
@@ -378,7 +378,7 @@ func TestEngineBulkAssign(t *testing.T) {
 				},
 				{
 					Slug: "traffic-full", Seed: "traffic-full", Status: StatusRunning,
-								Variants:          []Variant{{Name: "control", Weight: 100}},
+					Variants: []Variant{{Name: "control", Weight: 100}},
 				},
 			},
 			slugs:     nil,
@@ -389,12 +389,12 @@ func TestEngineBulkAssign(t *testing.T) {
 			exps: []Experiment{
 				{
 					Slug: "targeted", Seed: "targeted", Status: StatusRunning,
-								Variants:          []Variant{{Name: "control", Weight: 100}},
-					TargetingRules:    []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+					Variants:       []Variant{{Name: "control", Weight: 100}},
+					TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
 				},
 				{
 					Slug: "untargeted", Seed: "untargeted", Status: StatusRunning,
-								Variants:          []Variant{{Name: "control", Weight: 100}},
+					Variants: []Variant{{Name: "control", Weight: 100}},
 				},
 			},
 			slugs:      nil,
@@ -431,10 +431,10 @@ func TestEngineBulkAssign(t *testing.T) {
 
 func TestEngineAssignSeedOverride(t *testing.T) {
 	baseExp := Experiment{
-		Slug:              "seed-exp",
-		Seed:              "seed-exp",
-		Status:            StatusRunning,
-		Variants:          []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
+		Slug:     "seed-exp",
+		Seed:     "seed-exp",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}
 
 	expWithSeed := baseExp
