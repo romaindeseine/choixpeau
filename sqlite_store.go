@@ -45,6 +45,7 @@ func (s *SQLiteStore) migrate() error {
 			tags        TEXT NOT NULL DEFAULT '[]',
 			owner       TEXT NOT NULL DEFAULT '',
 			hypothesis  TEXT NOT NULL DEFAULT '',
+			traffic_percentage INTEGER NOT NULL DEFAULT 100,
 			created_at  TEXT NOT NULL,
 			updated_at  TEXT NOT NULL
 		);
@@ -54,7 +55,7 @@ func (s *SQLiteStore) migrate() error {
 
 func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 	row := s.db.QueryRow(
-		"SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, created_at, updated_at FROM experiments WHERE slug = ?",
+		"SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, traffic_percentage, created_at, updated_at FROM experiments WHERE slug = ?",
 		slug,
 	)
 
@@ -73,7 +74,7 @@ func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 // CachedStore is the primary read path, so SQLiteStore keeps the query simple
 // and avoids duplicating filter logic in SQL.
 func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
-	rows, err := s.db.Query("SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, created_at, updated_at FROM experiments")
+	rows, err := s.db.Query("SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, traffic_percentage, created_at, updated_at FROM experiments")
 	if err != nil {
 		return ExperimentListResult{}, fmt.Errorf("list experiments: %w", err)
 	}
@@ -83,7 +84,7 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 	for rows.Next() {
 		var exp Experiment
 		var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
-		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &exp.TrafficPercentage, &createdAt, &updatedAt); err != nil {
 			return ExperimentListResult{}, fmt.Errorf("scan experiment: %w", err)
 		}
 		if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
@@ -120,6 +121,9 @@ func (s *SQLiteStore) Create(exp Experiment) error {
 	if exp.Seed == "" {
 		exp.Seed = exp.Slug
 	}
+	if exp.TrafficPercentage == 0 {
+		exp.TrafficPercentage = 100
+	}
 
 	now := time.Now().UTC()
 	exp.CreatedAt = now
@@ -143,10 +147,11 @@ func (s *SQLiteStore) Create(exp Experiment) error {
 	}
 
 	_, err = s.db.Exec(
-		"INSERT INTO experiments (slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO experiments (slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, traffic_percentage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		exp.Slug, string(exp.Status), exp.Seed,
 		string(variantsJSON), string(overridesJSON), string(targetingRulesJSON),
 		exp.Description, string(tagsJSON), exp.Owner, exp.Hypothesis,
+		exp.TrafficPercentage,
 		exp.CreatedAt.Format(time.RFC3339), exp.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -165,6 +170,9 @@ func (s *SQLiteStore) Update(exp Experiment) error {
 	}
 	if exp.Seed == "" {
 		exp.Seed = exp.Slug
+	}
+	if exp.TrafficPercentage == 0 {
+		exp.TrafficPercentage = 100
 	}
 
 	exp.UpdatedAt = time.Now().UTC()
@@ -187,10 +195,11 @@ func (s *SQLiteStore) Update(exp Experiment) error {
 	}
 
 	res, err := s.db.Exec(
-		"UPDATE experiments SET status = ?, seed = ?, variants = ?, overrides = ?, targeting_rules = ?, description = ?, tags = ?, owner = ?, hypothesis = ?, updated_at = ? WHERE slug = ?",
+		"UPDATE experiments SET status = ?, seed = ?, variants = ?, overrides = ?, targeting_rules = ?, description = ?, tags = ?, owner = ?, hypothesis = ?, traffic_percentage = ?, updated_at = ? WHERE slug = ?",
 		string(exp.Status), exp.Seed,
 		string(variantsJSON), string(overridesJSON), string(targetingRulesJSON),
 		exp.Description, string(tagsJSON), exp.Owner, exp.Hypothesis,
+		exp.TrafficPercentage,
 		exp.UpdatedAt.Format(time.RFC3339), exp.Slug,
 	)
 	if err != nil {
@@ -221,7 +230,7 @@ func (s *SQLiteStore) Delete(slug string) error {
 func scanExperiment(row *sql.Row) (Experiment, error) {
 	var exp Experiment
 	var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
-	if err := row.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &exp.TrafficPercentage, &createdAt, &updatedAt); err != nil {
 		return Experiment{}, err
 	}
 	if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
