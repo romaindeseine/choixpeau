@@ -21,18 +21,25 @@ type Variant struct {
 	Weight int    `json:"weight"`
 }
 
+type TargetingRule struct {
+	Attribute string   `json:"attribute"`
+	Operator  string   `json:"operator"`
+	Values    []string `json:"values"`
+}
+
 type Experiment struct {
-	Slug        string            `json:"slug"`
-	Status      ExperimentStatus  `json:"status"`
-	Variants    []Variant         `json:"variants"`
-	Overrides   map[string]string `json:"overrides,omitempty"`
-	Seed        string            `json:"seed,omitempty"`
-	Description string            `json:"description,omitempty"`
-	Tags        []string          `json:"tags,omitempty"`
-	Owner       string            `json:"owner,omitempty"`
-	Hypothesis  string            `json:"hypothesis,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	Slug           string            `json:"slug"`
+	Status         ExperimentStatus  `json:"status"`
+	Variants       []Variant         `json:"variants"`
+	Overrides      map[string]string `json:"overrides,omitempty"`
+	Seed           string            `json:"seed,omitempty"`
+	TargetingRules []TargetingRule   `json:"targeting_rules,omitempty"`
+	Description    string            `json:"description,omitempty"`
+	Tags           []string          `json:"tags,omitempty"`
+	Owner          string            `json:"owner,omitempty"`
+	Hypothesis     string            `json:"hypothesis,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 type ExperimentFilter struct {
@@ -80,8 +87,8 @@ type Assignment struct {
 }
 
 type Engine interface {
-	Assign(ctx context.Context, experimentSlug string, userID string) (Assignment, error)
-	BulkAssign(ctx context.Context, userID string, experimentSlugs []string) ([]Assignment, error)
+	Assign(ctx context.Context, userID string, experimentSlug string, attributes map[string]string) (Assignment, error)
+	BulkAssign(ctx context.Context, userID string, experimentSlugs []string, attributes map[string]string) ([]Assignment, error)
 }
 
 // Event publishing
