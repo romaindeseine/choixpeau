@@ -76,49 +76,79 @@ func TestCachedStoreList(t *testing.T) {
 	tests := []struct {
 		name      string
 		filter    ExperimentFilter
+		opts      ListOptions
 		wantSlugs []string
+		wantTotal int
 	}{
 		{
 			name:      "no filter",
 			filter:    ExperimentFilter{},
 			wantSlugs: []string{"exp-a", "exp-b", "exp-c"},
+			wantTotal: 3,
 		},
 		{
 			name:      "filter by running status",
 			filter:    ExperimentFilter{Status: &running},
 			wantSlugs: []string{"exp-a", "exp-c"},
+			wantTotal: 2,
 		},
 		{
 			name:      "filter by draft status",
 			filter:    ExperimentFilter{Status: &draft},
 			wantSlugs: []string{"exp-b"},
+			wantTotal: 1,
 		},
 		{
 			name:      "filter by slugs",
 			filter:    ExperimentFilter{Slugs: []string{"exp-a", "exp-c"}},
 			wantSlugs: []string{"exp-a", "exp-c"},
+			wantTotal: 2,
 		},
 		{
 			name:      "filter by status and slugs",
 			filter:    ExperimentFilter{Status: &running, Slugs: []string{"exp-a", "exp-b"}},
 			wantSlugs: []string{"exp-a"},
+			wantTotal: 1,
 		},
 		{
 			name:      "no match",
 			filter:    ExperimentFilter{Status: &draft, Slugs: []string{"exp-a"}},
-			wantSlugs: nil,
+			wantSlugs: []string{},
+			wantTotal: 0,
+		},
+		{
+			name:      "pagination page 1",
+			opts:      ListOptions{Page: 1, PerPage: 2},
+			wantSlugs: []string{"exp-a", "exp-b"},
+			wantTotal: 3,
+		},
+		{
+			name:      "pagination page 2",
+			opts:      ListOptions{Page: 2, PerPage: 2},
+			wantSlugs: []string{"exp-c"},
+			wantTotal: 3,
+		},
+		{
+			name:      "search by slug",
+			filter:    ExperimentFilter{Search: "exp-a"},
+			wantSlugs: []string{"exp-a"},
+			wantTotal: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cs.List(tt.filter)
+			got, err := cs.List(tt.filter, tt.opts)
 			if err != nil {
 				t.Fatalf("List() error = %v", err)
 			}
 
-			gotSlugs := make([]string, len(got))
-			for i, exp := range got {
+			if got.Total != tt.wantTotal {
+				t.Fatalf("List() total = %d, want %d", got.Total, tt.wantTotal)
+			}
+
+			gotSlugs := make([]string, len(got.Experiments))
+			for i, exp := range got.Experiments {
 				gotSlugs[i] = exp.Slug
 			}
 
@@ -212,7 +242,7 @@ func TestCachedStoreConcurrency(t *testing.T) {
 			defer wg.Done()
 			slug := "conc-" + string(rune('a'+(n%5)))
 			cs.Get(slug)
-			cs.List(ExperimentFilter{})
+			cs.List(ExperimentFilter{}, ListOptions{})
 		}(i)
 	}
 	wg.Wait()
