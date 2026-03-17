@@ -24,15 +24,15 @@ func (m *mockStore) Get(slug string) (Experiment, error) {
 	return exp, nil
 }
 
-func (m *mockStore) List(filter ExperimentFilter) ([]Experiment, error) {
-	var result []Experiment
+func (m *mockStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
+	all := make([]Experiment, 0, len(m.experiments))
 	for _, exp := range m.experiments {
-		if filter.Status != nil && exp.Status != *filter.Status {
-			continue
-		}
-		result = append(result, exp)
+		all = append(all, exp)
 	}
-	return result, nil
+	filtered := filterExperiments(all, filter)
+	sortExperiments(filtered, opts)
+	page, total := paginateExperiments(filtered, opts)
+	return ExperimentListResult{Experiments: page, Total: total}, nil
 }
 
 func (m *mockStore) Create(exp Experiment) error {
@@ -74,15 +74,13 @@ func newTestServer(store Store) *Server {
 }
 
 func TestListExperiments(t *testing.T) {
-	running := ExperimentStatus("running")
-	draft := ExperimentStatus("draft")
-
 	tests := []struct {
 		name       string
 		query      string
 		store      *mockStore
 		wantStatus int
 		wantCount  int
+		wantTotal  int
 	}{
 		{
 			name: "all experiments",
@@ -92,6 +90,7 @@ func TestListExperiments(t *testing.T) {
 			}},
 			wantStatus: http.StatusOK,
 			wantCount:  2,
+			wantTotal:  2,
 		},
 		{
 			name:  "filter by status",
@@ -102,6 +101,7 @@ func TestListExperiments(t *testing.T) {
 			}},
 			wantStatus: http.StatusOK,
 			wantCount:  1,
+			wantTotal:  1,
 		},
 		{
 			name:       "filter returns empty",
@@ -109,6 +109,7 @@ func TestListExperiments(t *testing.T) {
 			store:      &mockStore{experiments: map[string]Experiment{"exp-a": {Slug: "exp-a", Status: StatusRunning}}},
 			wantStatus: http.StatusOK,
 			wantCount:  0,
+			wantTotal:  0,
 		},
 		{
 			name:       "invalid status",
@@ -116,10 +117,58 @@ func TestListExperiments(t *testing.T) {
 			store:      newMockStore(),
 			wantStatus: http.StatusBadRequest,
 		},
+		{
+			name:       "invalid page",
+			query:      "page=-1",
+			store:      newMockStore(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid per_page",
+			query:      "per_page=0",
+			store:      newMockStore(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "per_page too large",
+			query:      "per_page=999",
+			store:      newMockStore(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid sort",
+			query:      "sort=bogus",
+			store:      newMockStore(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid order",
+			query:      "order=bogus",
+			store:      newMockStore(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:  "pagination page 1",
+			query: "page=1&per_page=1",
+			store: &mockStore{experiments: map[string]Experiment{
+				"exp-a": {Slug: "exp-a", Status: StatusRunning},
+				"exp-b": {Slug: "exp-b", Status: StatusDraft},
+			}},
+			wantStatus: http.StatusOK,
+			wantCount:  1,
+			wantTotal:  2,
+		},
+		{
+			name:  "pagination beyond last page",
+			query: "page=99&per_page=20",
+			store: &mockStore{experiments: map[string]Experiment{
+				"exp-a": {Slug: "exp-a", Status: StatusRunning},
+			}},
+			wantStatus: http.StatusOK,
+			wantCount:  0,
+			wantTotal:  1,
+		},
 	}
-
-	_ = running
-	_ = draft
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -134,16 +183,19 @@ func TestListExperiments(t *testing.T) {
 			srv.listExperiments(w, req)
 
 			if w.Code != tt.wantStatus {
-				t.Fatalf("expected status %d, got %d", tt.wantStatus, w.Code)
+				t.Fatalf("expected status %d, got %d; body: %s", tt.wantStatus, w.Code, w.Body.String())
 			}
 
 			if tt.wantStatus == http.StatusOK {
-				var body []Experiment
+				var body ListExperimentsResponse
 				if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
 					t.Fatalf("invalid json: %v", err)
 				}
-				if len(body) != tt.wantCount {
-					t.Fatalf("expected %d experiments, got %d", tt.wantCount, len(body))
+				if len(body.Data) != tt.wantCount {
+					t.Fatalf("expected %d experiments, got %d", tt.wantCount, len(body.Data))
+				}
+				if body.Total != tt.wantTotal {
+					t.Fatalf("expected total %d, got %d", tt.wantTotal, body.Total)
 				}
 			}
 		})
