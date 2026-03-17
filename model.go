@@ -39,13 +39,26 @@ type ExperimentFilter struct {
 	Status *ExperimentStatus
 	Slugs  []string
 	Tags   []string
+	Search string
+}
+
+type ListOptions struct {
+	Sort    string // "slug", "created_at", "updated_at"
+	Order   string // "asc", "desc"
+	Page    int    // 1-based; 0 means no pagination
+	PerPage int    // 0 means no limit
+}
+
+type ExperimentListResult struct {
+	Experiments []Experiment
+	Total       int
 }
 
 // Store interfaces
 
 type ReadStore interface {
 	Get(slug string) (Experiment, error)
-	List(filter ExperimentFilter) ([]Experiment, error)
+	List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error)
 }
 
 type WriteStore interface {
