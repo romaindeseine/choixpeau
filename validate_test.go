@@ -204,6 +204,62 @@ func TestExperimentValidate(t *testing.T) {
 				Variants: []Variant{{Name: "a", Weight: 1}},
 			},
 		},
+		{
+			name: "valid traffic_percentage 1",
+			exp: Experiment{
+				Slug:              "test",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "a", Weight: 1}},
+				TrafficPercentage: 1,
+			},
+		},
+		{
+			name: "valid traffic_percentage 50",
+			exp: Experiment{
+				Slug:              "test",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "a", Weight: 1}},
+				TrafficPercentage: 50,
+			},
+		},
+		{
+			name: "valid traffic_percentage 100",
+			exp: Experiment{
+				Slug:              "test",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "a", Weight: 1}},
+				TrafficPercentage: 100,
+			},
+		},
+		{
+			name: "valid traffic_percentage 0 (zero value)",
+			exp: Experiment{
+				Slug:              "test",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "a", Weight: 1}},
+				TrafficPercentage: 0,
+			},
+		},
+		{
+			name: "negative traffic_percentage",
+			exp: Experiment{
+				Slug:              "test",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "a", Weight: 1}},
+				TrafficPercentage: -1,
+			},
+			wantErr: true,
+		},
+		{
+			name: "traffic_percentage over 100",
+			exp: Experiment{
+				Slug:              "test",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "a", Weight: 1}},
+				TrafficPercentage: 101,
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

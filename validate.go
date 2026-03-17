@@ -21,6 +21,9 @@ func (e Experiment) Validate() error {
 	if err := e.validateTargetingRules(); err != nil {
 		return err
 	}
+	if err := e.validateTrafficPercentage(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -83,6 +86,13 @@ func (e Experiment) validateTargetingRules() error {
 		if len(rule.Values) == 0 {
 			return fmt.Errorf("experiment %q targeting rule %d has empty values", e.Slug, i)
 		}
+	}
+	return nil
+}
+
+func (e Experiment) validateTrafficPercentage() error {
+	if e.TrafficPercentage < 0 || e.TrafficPercentage > 100 {
+		return fmt.Errorf("experiment %q has invalid traffic_percentage %d (must be 0-100)", e.Slug, e.TrafficPercentage)
 	}
 	return nil
 }
