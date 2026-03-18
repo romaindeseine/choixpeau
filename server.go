@@ -20,16 +20,18 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type Server struct {
-	Addr   string
-	store  Store
-	engine Engine
+	Addr            string
+	experimentStore ExperimentStore
+	assignStore     AssignStore
+	engine          Engine
 }
 
-func NewServer(addr string, store Store, publisher EventPublisher) *Server {
+func NewServer(addr string, experimentStore ExperimentStore, assignStore AssignStore, engine Engine) *Server {
 	return &Server{
-		Addr:   addr,
-		store:  store,
-		engine: NewEngine(store, publisher),
+		Addr:            addr,
+		experimentStore: experimentStore,
+		assignStore:     assignStore,
+		engine:          engine,
 	}
 }
 
