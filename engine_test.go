@@ -7,19 +7,9 @@ import (
 	"testing"
 )
 
-func newTestStore(t *testing.T, experiments []Experiment) Store {
+func newTestAssignReader(t *testing.T, experiments []Experiment) AssignReader {
 	t.Helper()
-	s, err := NewSQLiteStore(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-	for _, exp := range experiments {
-		if err := s.Create(exp); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return s
+	return NewMemStore(experiments)
 }
 
 func TestEngineAssign(t *testing.T) {
@@ -214,8 +204,8 @@ func TestEngineAssign(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := newTestStore(t, tt.exps)
-			e := NewEngine(store, nil)
+			reader := newTestAssignReader(t,tt.exps)
+			e := NewEngine(reader, nil)
 			got, err := e.Assign(context.Background(), tt.userID, tt.slug, tt.attributes)
 
 			if tt.wantErr != nil {
@@ -245,13 +235,13 @@ func TestEngineAssign(t *testing.T) {
 }
 
 func TestEngineAssignDeterminism(t *testing.T) {
-	store := newTestStore(t, []Experiment{{
+	reader := newTestAssignReader(t,[]Experiment{{
 		Slug:     "det-exp",
 		Seed:     "det-exp",
 		Status:   StatusRunning,
 		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}})
-	e := NewEngine(store, nil)
+	e := NewEngine(reader, nil)
 
 	first, err := e.Assign(context.Background(), "user-123", "det-exp", nil)
 	if err != nil {
@@ -270,13 +260,13 @@ func TestEngineAssignDeterminism(t *testing.T) {
 }
 
 func TestEngineAssignDistribution(t *testing.T) {
-	store := newTestStore(t, []Experiment{{
+	reader := newTestAssignReader(t,[]Experiment{{
 		Slug:     "dist-exp",
 		Seed:     "dist-exp",
 		Status:   StatusRunning,
 		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 	}})
-	e := NewEngine(store, nil)
+	e := NewEngine(reader, nil)
 
 	counts := map[string]int{}
 	n := 10000
@@ -297,14 +287,14 @@ func TestEngineAssignDistribution(t *testing.T) {
 }
 
 func TestEngineExclusionPercentageDistribution(t *testing.T) {
-	store := newTestStore(t, []Experiment{{
+	reader := newTestAssignReader(t,[]Experiment{{
 		Slug:                "traffic-dist",
 		Seed:                "traffic-dist",
 		Status:              StatusRunning,
 		Variants:            []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 		ExclusionPercentage: 80,
 	}})
-	e := NewEngine(store, nil)
+	e := NewEngine(reader, nil)
 
 	assigned := 0
 	n := 10000
@@ -405,8 +395,8 @@ func TestEngineBulkAssign(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := newTestStore(t, tt.exps)
-			e := NewEngine(store, nil)
+			reader := newTestAssignReader(t,tt.exps)
+			e := NewEngine(reader, nil)
 			assignments, err := e.BulkAssign(context.Background(), "user-1", tt.slugs, tt.attributes)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -440,10 +430,10 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 	expWithSeed := baseExp
 	expWithSeed.Seed = "different-seed"
 
-	store1 := newTestStore(t, []Experiment{baseExp})
-	store2 := newTestStore(t, []Experiment{expWithSeed})
-	e1 := NewEngine(store1, nil)
-	e2 := NewEngine(store2, nil)
+	reader1 := newTestAssignReader(t,[]Experiment{baseExp})
+	reader2 := newTestAssignReader(t,[]Experiment{expWithSeed})
+	e1 := NewEngine(reader1, nil)
+	e2 := NewEngine(reader2, nil)
 
 	diffs := 0
 	n := 100

@@ -21,19 +21,9 @@ func hasAllTags(expTags []string, required []string) bool {
 func filterExperiments(exps []Experiment, filter ExperimentFilter) []Experiment {
 	result := make([]Experiment, 0, len(exps))
 
-	slugSet := make(map[string]struct{}, len(filter.Slugs))
-	for _, s := range filter.Slugs {
-		slugSet[s] = struct{}{}
-	}
-
 	for _, exp := range exps {
 		if filter.Status != nil && exp.Status != *filter.Status {
 			continue
-		}
-		if len(slugSet) > 0 {
-			if _, ok := slugSet[exp.Slug]; !ok {
-				continue
-			}
 		}
 		if filter.Search != "" && !strings.Contains(strings.ToLower(exp.Slug), strings.ToLower(filter.Search)) {
 			continue

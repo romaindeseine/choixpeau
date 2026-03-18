@@ -188,24 +188,6 @@ func TestSQLiteStoreList(t *testing.T) {
 			wantTotal: 1,
 		},
 		{
-			name:      "filter by slugs",
-			filter:    ExperimentFilter{Slugs: []string{"exp-a", "exp-c"}},
-			wantSlugs: []string{"exp-a", "exp-c"},
-			wantTotal: 2,
-		},
-		{
-			name:      "filter by status and slugs",
-			filter:    ExperimentFilter{Status: &running, Slugs: []string{"exp-a", "exp-b"}},
-			wantSlugs: []string{"exp-a"},
-			wantTotal: 1,
-		},
-		{
-			name:      "no match",
-			filter:    ExperimentFilter{Status: &draft, Slugs: []string{"exp-a"}},
-			wantSlugs: []string{},
-			wantTotal: 0,
-		},
-		{
 			name:      "pagination page 1",
 			opts:      ListOptions{Page: 1, PerPage: 2},
 			wantSlugs: []string{"exp-a", "exp-b"},

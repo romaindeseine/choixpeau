@@ -69,8 +69,15 @@ func newMockStore() *mockStore {
 	return &mockStore{experiments: make(map[string]Experiment)}
 }
 
-func newTestServer(store Store) *Server {
-	return &Server{store: store}
+type noopAssignStore struct{}
+
+func (noopAssignStore) Get(slug string) (Experiment, error)                         { return Experiment{}, ErrExperimentNotFound }
+func (noopAssignStore) List(slugs []string, status ExperimentStatus) ([]Experiment, error) { return nil, nil }
+func (noopAssignStore) Set(exp Experiment)                                          {}
+func (noopAssignStore) Delete(slug string)                                          {}
+
+func newTestServer(store ExperimentStore) *Server {
+	return &Server{experimentStore: store, assignStore: noopAssignStore{}}
 }
 
 func TestListExperiments(t *testing.T) {
