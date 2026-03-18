@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -25,14 +26,31 @@ func (m *mockStore) Get(slug string) (Experiment, error) {
 }
 
 func (m *mockStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
-	all := make([]Experiment, 0, len(m.experiments))
+	var filtered []Experiment
 	for _, exp := range m.experiments {
-		all = append(all, exp)
+		if filter.Status != nil && exp.Status != *filter.Status {
+			continue
+		}
+		filtered = append(filtered, exp)
 	}
-	filtered := filterExperiments(all, filter)
-	sortExperiments(filtered, opts)
-	page, total := paginateExperiments(filtered, opts)
-	return ExperimentListResult{Experiments: page, Total: total}, nil
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Slug < filtered[j].Slug
+	})
+
+	total := len(filtered)
+	if opts.Page > 0 && opts.PerPage > 0 {
+		offset := (opts.Page - 1) * opts.PerPage
+		if offset >= len(filtered) {
+			filtered = []Experiment{}
+		} else {
+			end := offset + opts.PerPage
+			if end > len(filtered) {
+				end = len(filtered)
+			}
+			filtered = filtered[offset:end]
+		}
+	}
+	return ExperimentListResult{Experiments: filtered, Total: total}, nil
 }
 
 func (m *mockStore) Create(exp Experiment) error {
@@ -143,18 +161,6 @@ func TestListExperiments(t *testing.T) {
 		{
 			name:       "per_page too large",
 			query:      "per_page=999",
-			store:      newMockStore(),
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name:       "invalid sort",
-			query:      "sort=bogus",
-			store:      newMockStore(),
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name:       "invalid order",
-			query:      "order=bogus",
 			store:      newMockStore(),
 			wantStatus: http.StatusBadRequest,
 		},

@@ -38,7 +38,6 @@ func (s *Server) listExperiments(w http.ResponseWriter, r *http.Request) {
 		filter.Status = &status
 	}
 
-	filter.Search = q.Get("search")
 	filter.Tags = q["tags"]
 
 	page, perPage := 1, 20
@@ -59,32 +58,8 @@ func (s *Server) listExperiments(w http.ResponseWriter, r *http.Request) {
 		perPage = pp
 	}
 
-	sortCol := "created_at"
-	if raw := q.Get("sort"); raw != "" {
-		switch raw {
-		case "slug", "created_at", "updated_at":
-			sortCol = raw
-		default:
-			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid sort parameter (slug, created_at, updated_at)"})
-			return
-		}
-	}
-
-	order := "desc"
-	if raw := q.Get("order"); raw != "" {
-		switch raw {
-		case "asc", "desc":
-			order = raw
-		default:
-			writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid order parameter (asc, desc)"})
-			return
-		}
-	}
-
 	opts.Page = page
 	opts.PerPage = perPage
-	opts.Sort = sortCol
-	opts.Order = order
 
 	result, err := s.experimentStore.List(filter, opts)
 	if err != nil {

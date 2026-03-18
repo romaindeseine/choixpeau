@@ -53,14 +53,11 @@ type Experiment struct {
 type ExperimentFilter struct {
 	Status *ExperimentStatus
 	Tags   []string
-	Search string
 }
 
 type ListOptions struct {
-	Sort    string // "slug", "created_at", "updated_at"
-	Order   string // "asc", "desc"
-	Page    int    // 1-based; 0 means no pagination
-	PerPage int    // 0 means no limit
+	Page    int // 1-based; 0 means no pagination
+	PerPage int // 0 means no limit
 }
 
 type ExperimentListResult struct {
