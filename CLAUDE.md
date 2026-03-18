@@ -42,8 +42,8 @@ Flat layout — all Go files at the root in `package pearcut`, one file per resp
 - `errors.go` — sentinel errors
 - `validate.go` — validation methods on Experiment
 - `engine.go` — assignment engine (lookup, overrides, targeting evaluation, hash-based variant selection, event publishing)
-- `assign.go` — HTTP handlers for assign and bulk assign endpoints
-- `admin.go` — admin handlers (CRUD experiments under `/admin/v1`)
+- `assign_handler.go` — HTTP handlers for assign and bulk assign endpoints
+- `admin_handler.go` — admin handlers (CRUD experiments under `/admin/v1`)
 - `server.go` — Server struct, NewServer, RegisterRoutes, writeJSON helper, health handler
 - `publisher.go` — NoopPublisher, StdoutPublisher (EventPublisher implementations)
 - `sqlite_store.go` — SQLite-backed ExperimentStore implementation
