@@ -38,7 +38,7 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 
 Flat layout — all Go files at the root in `package pearcut`, one file per responsibility:
 
-- `model.go` — domain structs (Experiment, Variant, Assignment, AssignmentEvent), interfaces (Store, Engine, EventPublisher)
+- `model.go` — domain structs (Experiment, Variant, Assignment, AssignmentEvent), interfaces (ExperimentStore, AssignReader, AssignWriter, AssignStore, Engine, EventPublisher)
 - `errors.go` — sentinel errors
 - `validate.go` — validation methods on Experiment
 - `engine.go` — assignment engine (lookup, overrides, targeting evaluation, hash-based variant selection, event publishing)
@@ -46,8 +46,8 @@ Flat layout — all Go files at the root in `package pearcut`, one file per resp
 - `admin.go` — admin handlers (CRUD experiments under `/admin/v1`)
 - `server.go` — Server struct, NewServer, RegisterRoutes, writeJSON helper, health handler
 - `publisher.go` — NoopPublisher, StdoutPublisher (EventPublisher implementations)
-- `sqlite_store.go` — SQLite-backed Store implementation
-- `cached_store.go` — in-memory cache wrapping a Store (warm-up on startup, reads from cache, writes refresh cache)
+- `sqlite_store.go` — SQLite-backed ExperimentStore implementation
+- `mem_store.go` — pure in-memory AssignStore (Set/Get/Delete/List, no DB dependency)
 - `cmd/pearcut/main.go` — standalone binary entrypoint
 
 ## Build & Run

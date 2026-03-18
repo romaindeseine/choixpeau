@@ -34,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	experimentStore,err := pearcut.NewSQLiteStore(*dbPath)
+	experimentStore, err := pearcut.NewSQLiteStore(*dbPath)
 	if err != nil {
 		slog.Error("❌ failed to open database", "path", *dbPath, "error", err)
 		os.Exit(1)

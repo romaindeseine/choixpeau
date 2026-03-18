@@ -204,7 +204,7 @@ func TestEngineAssign(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reader := newTestAssignReader(t,tt.exps)
+			reader := newTestAssignReader(t, tt.exps)
 			e := NewEngine(reader, nil)
 			got, err := e.Assign(context.Background(), tt.userID, tt.slug, tt.attributes)
 
@@ -235,7 +235,7 @@ func TestEngineAssign(t *testing.T) {
 }
 
 func TestEngineAssignDeterminism(t *testing.T) {
-	reader := newTestAssignReader(t,[]Experiment{{
+	reader := newTestAssignReader(t, []Experiment{{
 		Slug:     "det-exp",
 		Seed:     "det-exp",
 		Status:   StatusRunning,
@@ -260,7 +260,7 @@ func TestEngineAssignDeterminism(t *testing.T) {
 }
 
 func TestEngineAssignDistribution(t *testing.T) {
-	reader := newTestAssignReader(t,[]Experiment{{
+	reader := newTestAssignReader(t, []Experiment{{
 		Slug:     "dist-exp",
 		Seed:     "dist-exp",
 		Status:   StatusRunning,
@@ -287,7 +287,7 @@ func TestEngineAssignDistribution(t *testing.T) {
 }
 
 func TestEngineExclusionPercentageDistribution(t *testing.T) {
-	reader := newTestAssignReader(t,[]Experiment{{
+	reader := newTestAssignReader(t, []Experiment{{
 		Slug:                "traffic-dist",
 		Seed:                "traffic-dist",
 		Status:              StatusRunning,
@@ -395,7 +395,7 @@ func TestEngineBulkAssign(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reader := newTestAssignReader(t,tt.exps)
+			reader := newTestAssignReader(t, tt.exps)
 			e := NewEngine(reader, nil)
 			assignments, err := e.BulkAssign(context.Background(), "user-1", tt.slugs, tt.attributes)
 			if err != nil {
@@ -430,8 +430,8 @@ func TestEngineAssignSeedOverride(t *testing.T) {
 	expWithSeed := baseExp
 	expWithSeed.Seed = "different-seed"
 
-	reader1 := newTestAssignReader(t,[]Experiment{baseExp})
-	reader2 := newTestAssignReader(t,[]Experiment{expWithSeed})
+	reader1 := newTestAssignReader(t, []Experiment{baseExp})
+	reader2 := newTestAssignReader(t, []Experiment{expWithSeed})
 	e1 := NewEngine(reader1, nil)
 	e2 := NewEngine(reader2, nil)
 

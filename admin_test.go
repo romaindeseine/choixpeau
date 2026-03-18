@@ -71,10 +71,14 @@ func newMockStore() *mockStore {
 
 type noopAssignStore struct{}
 
-func (noopAssignStore) Get(slug string) (Experiment, error)                         { return Experiment{}, ErrExperimentNotFound }
-func (noopAssignStore) List(slugs []string, status ExperimentStatus) ([]Experiment, error) { return nil, nil }
-func (noopAssignStore) Set(exp Experiment)                                          {}
-func (noopAssignStore) Delete(slug string)                                          {}
+func (noopAssignStore) Get(slug string) (Experiment, error) {
+	return Experiment{}, ErrExperimentNotFound
+}
+func (noopAssignStore) List(slugs []string, status ExperimentStatus) ([]Experiment, error) {
+	return nil, nil
+}
+func (noopAssignStore) Set(exp Experiment) {}
+func (noopAssignStore) Delete(slug string) {}
 
 func newTestServer(store ExperimentStore) *Server {
 	return &Server{experimentStore: store, assignStore: noopAssignStore{}}
