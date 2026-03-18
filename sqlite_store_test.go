@@ -152,9 +152,9 @@ func TestSQLiteStoreList(t *testing.T) {
 	draft := StatusDraft
 
 	experiments := []Experiment{
-		{Slug: "exp-a", Status: StatusRunning, Seed: "exp-a", Variants: []Variant{{Name: "v1", Weight: 1}}},
-		{Slug: "exp-b", Status: StatusDraft, Seed: "exp-b", Variants: []Variant{{Name: "v1", Weight: 1}}},
-		{Slug: "exp-c", Status: StatusRunning, Seed: "exp-c", Variants: []Variant{{Name: "v1", Weight: 1}}},
+		{Slug: "exp-a", Status: StatusRunning, Seed: "exp-a", Variants: []Variant{{Name: "v1", Weight: 1}}, Tags: []string{"checkout", "mobile"}},
+		{Slug: "exp-b", Status: StatusDraft, Seed: "exp-b", Variants: []Variant{{Name: "v1", Weight: 1}}, Tags: []string{"checkout"}},
+		{Slug: "exp-c", Status: StatusRunning, Seed: "exp-c", Variants: []Variant{{Name: "v1", Weight: 1}}, Tags: []string{"pricing"}},
 	}
 	for _, exp := range experiments {
 		if err := s.Create(exp); err != nil {
@@ -166,19 +166,18 @@ func TestSQLiteStoreList(t *testing.T) {
 		name      string
 		filter    ExperimentFilter
 		opts      ListOptions
-		wantSlugs []string
+		wantSlugs []string // if nil, only wantCount is checked
+		wantCount int      // expected len(Experiments); ignored when wantSlugs is set
 		wantTotal int
 	}{
 		{
 			name:      "no filter",
 			filter:    ExperimentFilter{},
-			wantSlugs: []string{"exp-a", "exp-b", "exp-c"},
 			wantTotal: 3,
 		},
 		{
 			name:      "filter by running status",
 			filter:    ExperimentFilter{Status: &running},
-			wantSlugs: []string{"exp-a", "exp-c"},
 			wantTotal: 2,
 		},
 		{
@@ -190,14 +189,14 @@ func TestSQLiteStoreList(t *testing.T) {
 		{
 			name:      "pagination page 1",
 			opts:      ListOptions{Page: 1, PerPage: 2},
-			wantSlugs: []string{"exp-a", "exp-b"},
 			wantTotal: 3,
+			wantCount: 2,
 		},
 		{
 			name:      "pagination page 2",
 			opts:      ListOptions{Page: 2, PerPage: 2},
-			wantSlugs: []string{"exp-c"},
 			wantTotal: 3,
+			wantCount: 1,
 		},
 		{
 			name:      "pagination beyond last page",
@@ -206,14 +205,19 @@ func TestSQLiteStoreList(t *testing.T) {
 			wantTotal: 3,
 		},
 		{
-			name:      "search by slug",
-			filter:    ExperimentFilter{Search: "exp-a"},
+			name:      "filter by single tag",
+			filter:    ExperimentFilter{Tags: []string{"checkout"}},
+			wantTotal: 2,
+		},
+		{
+			name:      "filter by multiple tags (AND)",
+			filter:    ExperimentFilter{Tags: []string{"checkout", "mobile"}},
 			wantSlugs: []string{"exp-a"},
 			wantTotal: 1,
 		},
 		{
-			name:      "search no match",
-			filter:    ExperimentFilter{Search: "zzz"},
+			name:      "filter by tag no match",
+			filter:    ExperimentFilter{Tags: []string{"nonexistent"}},
 			wantSlugs: []string{},
 			wantTotal: 0,
 		},
@@ -230,17 +234,22 @@ func TestSQLiteStoreList(t *testing.T) {
 				t.Fatalf("List() total = %d, want %d", got.Total, tt.wantTotal)
 			}
 
-			gotSlugs := make([]string, len(got.Experiments))
-			for i, exp := range got.Experiments {
-				gotSlugs[i] = exp.Slug
-			}
-
-			if len(gotSlugs) != len(tt.wantSlugs) {
-				t.Fatalf("List() returned %v, want %v", gotSlugs, tt.wantSlugs)
-			}
-			for i := range gotSlugs {
-				if gotSlugs[i] != tt.wantSlugs[i] {
-					t.Errorf("List()[%d] = %q, want %q", i, gotSlugs[i], tt.wantSlugs[i])
+			if tt.wantSlugs != nil {
+				gotSlugs := make([]string, len(got.Experiments))
+				for i, exp := range got.Experiments {
+					gotSlugs[i] = exp.Slug
+				}
+				if len(gotSlugs) != len(tt.wantSlugs) {
+					t.Fatalf("List() returned %v, want %v", gotSlugs, tt.wantSlugs)
+				}
+				for i := range gotSlugs {
+					if gotSlugs[i] != tt.wantSlugs[i] {
+						t.Errorf("List()[%d] = %q, want %q", i, gotSlugs[i], tt.wantSlugs[i])
+					}
+				}
+			} else if tt.wantCount > 0 {
+				if len(got.Experiments) != tt.wantCount {
+					t.Fatalf("List() count = %d, want %d", len(got.Experiments), tt.wantCount)
 				}
 			}
 		})

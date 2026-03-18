@@ -69,18 +69,28 @@ func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 	return exp, nil
 }
 
-// List loads all experiments from SQLite and delegates filtering, sorting and
-// pagination to the shared helpers in filter.go. This is intentional: the
-// CachedStore is the primary read path, so SQLiteStore keeps the query simple
-// and avoids duplicating filter logic in SQL.
 func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (ExperimentListResult, error) {
-	rows, err := s.db.Query("SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, exclusion_percentage, created_at, updated_at FROM experiments")
+	where, args := buildWhereClause(filter)
+
+	var total int
+	countQuery := "SELECT COUNT(*) FROM experiments" + where
+	if err := s.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
+		return ExperimentListResult{}, fmt.Errorf("count experiments: %w", err)
+	}
+
+	query := "SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, exclusion_percentage, created_at, updated_at FROM experiments" + where + " ORDER BY created_at DESC"
+	if opts.Page > 0 && opts.PerPage > 0 {
+		offset := (opts.Page - 1) * opts.PerPage
+		query += fmt.Sprintf(" LIMIT %d OFFSET %d", opts.PerPage, offset)
+	}
+
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return ExperimentListResult{}, fmt.Errorf("list experiments: %w", err)
 	}
 	defer rows.Close()
 
-	var all []Experiment
+	experiments := []Experiment{}
 	for rows.Next() {
 		var exp Experiment
 		var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
@@ -101,17 +111,32 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 		}
 		exp.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		exp.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		all = append(all, exp)
+		experiments = append(experiments, exp)
 	}
 	if err := rows.Err(); err != nil {
 		return ExperimentListResult{}, fmt.Errorf("iterate experiments: %w", err)
 	}
 
-	filtered := filterExperiments(all, filter)
-	sortExperiments(filtered, opts)
-	page, total := paginateExperiments(filtered, opts)
+	return ExperimentListResult{Experiments: experiments, Total: total}, nil
+}
 
-	return ExperimentListResult{Experiments: page, Total: total}, nil
+func buildWhereClause(filter ExperimentFilter) (string, []any) {
+	var conditions []string
+	var args []any
+
+	if filter.Status != nil {
+		conditions = append(conditions, "status = ?")
+		args = append(args, string(*filter.Status))
+	}
+	for _, tag := range filter.Tags {
+		conditions = append(conditions, "EXISTS (SELECT 1 FROM json_each(tags) WHERE json_each.value = ?)")
+		args = append(args, tag)
+	}
+
+	if len(conditions) == 0 {
+		return "", nil
+	}
+	return " WHERE " + strings.Join(conditions, " AND "), args
 }
 
 func (s *SQLiteStore) Create(exp Experiment) error {

@@ -84,7 +84,7 @@ Status must be one of: `draft`, `running`, `paused`, `stopped`. Seed is optional
 
 | Method   | Endpoint                              | Description         |
 |----------|---------------------------------------|---------------------|
-| `GET`    | `/admin/v1/experiments`               | List experiments (optional `?status=` filter) |
+| `GET`    | `/admin/v1/experiments`               | List experiments (`?status=`, `?tags=`, `?page=`, `?per_page=`) |
 | `GET`    | `/admin/v1/experiments/{slug}`        | Get one experiment  |
 | `POST`   | `/admin/v1/experiments`               | Create experiment   |
 | `PUT`    | `/admin/v1/experiments/{slug}`        | Update experiment   |
