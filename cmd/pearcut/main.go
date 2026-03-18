@@ -34,22 +34,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	store, err := pearcut.NewSQLiteStore(*dbPath)
+	experimentStore,err := pearcut.NewSQLiteStore(*dbPath)
 	if err != nil {
 		slog.Error("❌ failed to open database", "path", *dbPath, "error", err)
 		os.Exit(1)
 	}
 	slog.Info("✅ connected to database", "path", *dbPath)
 
-	cached, err := pearcut.NewCachedStore(store)
+	result, err := experimentStore.List(pearcut.ExperimentFilter{}, pearcut.ListOptions{})
 	if err != nil {
-		slog.Error("❌ failed to initialize cache", "error", err)
+		slog.Error("❌ failed to load experiments into memory", "error", err)
 		os.Exit(1)
 	}
+	assignStore := pearcut.NewMemStore(result.Experiments)
 
 	async := pearcut.NewAsyncPublisher(publisher)
+	engine := pearcut.NewEngine(assignStore, async)
 
-	srv := pearcut.NewServer(*httpAddr, cached, async)
+	srv := pearcut.NewServer(*httpAddr, experimentStore, assignStore, engine)
 
 	mux := http.NewServeMux()
 	srv.RegisterRoutes(mux)
