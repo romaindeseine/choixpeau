@@ -11,19 +11,19 @@ import (
 )
 
 type engine struct {
-	store     ReadStore
+	reader    AssignReader
 	publisher EventPublisher
 }
 
-func NewEngine(store ReadStore, publisher EventPublisher) Engine {
+func NewEngine(reader AssignReader, publisher EventPublisher) Engine {
 	if publisher == nil {
 		publisher = NoopPublisher{}
 	}
-	return &engine{store: store, publisher: publisher}
+	return &engine{reader: reader, publisher: publisher}
 }
 
 func (e *engine) Assign(ctx context.Context, userID string, experimentSlug string, attributes map[string]string) (Assignment, error) {
-	exp, err := e.store.Get(experimentSlug)
+	exp, err := e.reader.Get(experimentSlug)
 	if err != nil {
 		return Assignment{}, err
 	}
@@ -71,19 +71,13 @@ func (e *engine) Assign(ctx context.Context, userID string, experimentSlug strin
 }
 
 func (e *engine) BulkAssign(ctx context.Context, userID string, experimentSlugs []string, attributes map[string]string) ([]Assignment, error) {
-	status := StatusRunning
-	filter := ExperimentFilter{Status: &status}
-	if len(experimentSlugs) > 0 {
-		filter.Slugs = experimentSlugs
-	}
-
-	result, err := e.store.List(filter, ListOptions{})
+	experiments, err := e.reader.List(experimentSlugs, StatusRunning)
 	if err != nil {
 		return nil, fmt.Errorf("listing experiments: %w", err)
 	}
 
-	assignments := make([]Assignment, 0, len(result.Experiments))
-	for _, exp := range result.Experiments {
+	assignments := make([]Assignment, 0, len(experiments))
+	for _, exp := range experiments {
 		var variant string
 		if v, ok := exp.Overrides[userID]; ok {
 			variant = v
