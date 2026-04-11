@@ -16,6 +16,32 @@ func isValidStatus(s ExperimentStatus) bool {
 	return false
 }
 
+type CreateExperimentRequest struct {
+	Slug              string            `json:"slug"`
+	Status            ExperimentStatus  `json:"status"`
+	Variants          []Variant         `json:"variants"`
+	Overrides         map[string]string `json:"overrides,omitempty"`
+	Seed              string            `json:"seed,omitempty"`
+	TargetingRules    []TargetingRule   `json:"targeting_rules,omitempty"`
+	TrafficPercentage *int              `json:"traffic_percentage,omitempty"`
+	Description       string            `json:"description,omitempty"`
+	Tags              []string          `json:"tags,omitempty"`
+	Owner             string            `json:"owner,omitempty"`
+	Hypothesis        string            `json:"hypothesis,omitempty"`
+}
+
+type UpdateExperimentRequest struct {
+	Status            ExperimentStatus  `json:"status"`
+	Variants          []Variant         `json:"variants"`
+	Overrides         map[string]string `json:"overrides,omitempty"`
+	TargetingRules    []TargetingRule   `json:"targeting_rules,omitempty"`
+	TrafficPercentage *int              `json:"traffic_percentage,omitempty"`
+	Description       string            `json:"description,omitempty"`
+	Tags              []string          `json:"tags,omitempty"`
+	Owner             string            `json:"owner,omitempty"`
+	Hypothesis        string            `json:"hypothesis,omitempty"`
+}
+
 type ListExperimentsResponse struct {
 	Data       []Experiment `json:"data"`
 	Page       int          `json:"page"`
@@ -100,10 +126,29 @@ func (s *Server) getExperiment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createExperiment(w http.ResponseWriter, r *http.Request) {
-	var exp Experiment
-	if err := json.NewDecoder(r.Body).Decode(&exp); err != nil {
+	var req CreateExperimentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid json"})
 		return
+	}
+
+	trafficPercentage := 100
+	if req.TrafficPercentage != nil {
+		trafficPercentage = *req.TrafficPercentage
+	}
+
+	exp := Experiment{
+		Slug:              req.Slug,
+		Status:            req.Status,
+		Variants:          req.Variants,
+		Overrides:         req.Overrides,
+		Seed:              req.Seed,
+		TargetingRules:    req.TargetingRules,
+		TrafficPercentage: trafficPercentage,
+		Description:       req.Description,
+		Tags:              req.Tags,
+		Owner:             req.Owner,
+		Hypothesis:        req.Hypothesis,
 	}
 
 	if err := s.experimentStore.Create(exp); err != nil {
@@ -131,12 +176,35 @@ func (s *Server) createExperiment(w http.ResponseWriter, r *http.Request) {
 func (s *Server) updateExperiment(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 
-	var exp Experiment
-	if err := json.NewDecoder(r.Body).Decode(&exp); err != nil {
+	existing, err := s.experimentStore.Get(slug)
+	if err != nil {
+		if errors.Is(err, ErrExperimentNotFound) {
+			writeJSON(w, http.StatusNotFound, ErrorResponse{Error: "experiment not found"})
+			return
+		}
+		slog.Error("failed to get experiment", "slug", slug, "error", err)
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	var req UpdateExperimentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid json"})
 		return
 	}
-	exp.Slug = slug
+
+	exp := existing
+	exp.Status = req.Status
+	exp.Variants = req.Variants
+	exp.Overrides = req.Overrides
+	exp.TargetingRules = req.TargetingRules
+	exp.Description = req.Description
+	exp.Tags = req.Tags
+	exp.Owner = req.Owner
+	exp.Hypothesis = req.Hypothesis
+	if req.TrafficPercentage != nil {
+		exp.TrafficPercentage = *req.TrafficPercentage
+	}
 
 	if err := s.experimentStore.Update(exp); err != nil {
 		switch {
