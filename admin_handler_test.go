@@ -375,6 +375,21 @@ func TestUpdateExperiment(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
+			name: "partial update preserves unset fields",
+			slug: "exp-a",
+			body: `{"description":"new desc"}`,
+			store: &mockStore{experiments: map[string]Experiment{
+				"exp-a": {
+					Slug:              "exp-a",
+					Status:            StatusRunning,
+					Variants:          []Variant{{Name: "control", Weight: 1}},
+					TrafficPercentage: 50,
+					Owner:             "alice",
+				},
+			}},
+			wantStatus: http.StatusOK,
+		},
+		{
 			name: "validation error",
 			slug: "exp-a",
 			body: `{"status":"running","variants":[]}`,
@@ -392,9 +407,9 @@ func TestUpdateExperiment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := newTestServer(tt.store)
 			mux := http.NewServeMux()
-			mux.HandleFunc("PUT /admin/v1/experiments/{slug}", srv.updateExperiment)
+			mux.HandleFunc("PATCH /admin/v1/experiments/{slug}", srv.updateExperiment)
 
-			req := httptest.NewRequest(http.MethodPut, "/admin/v1/experiments/"+tt.slug, strings.NewReader(tt.body))
+			req := httptest.NewRequest(http.MethodPatch, "/admin/v1/experiments/"+tt.slug, strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
@@ -411,6 +426,23 @@ func TestUpdateExperiment(t *testing.T) {
 				}
 				if exp.Slug != tt.slug {
 					t.Fatalf("expected slug %s, got %s", tt.slug, exp.Slug)
+				}
+				if tt.name == "partial update preserves unset fields" {
+					if exp.Status != StatusRunning {
+						t.Fatalf("expected status running, got %s", exp.Status)
+					}
+					if len(exp.Variants) != 1 || exp.Variants[0].Name != "control" {
+						t.Fatalf("expected variants preserved, got %v", exp.Variants)
+					}
+					if exp.TrafficPercentage != 50 {
+						t.Fatalf("expected traffic_percentage 50, got %d", exp.TrafficPercentage)
+					}
+					if exp.Owner != "alice" {
+						t.Fatalf("expected owner alice, got %s", exp.Owner)
+					}
+					if exp.Description != "new desc" {
+						t.Fatalf("expected description 'new desc', got %s", exp.Description)
+					}
 				}
 			}
 		})
