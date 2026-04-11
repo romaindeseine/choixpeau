@@ -31,15 +31,15 @@ type CreateExperimentRequest struct {
 }
 
 type UpdateExperimentRequest struct {
-	Status            ExperimentStatus  `json:"status"`
-	Variants          []Variant         `json:"variants"`
-	Overrides         map[string]string `json:"overrides,omitempty"`
-	TargetingRules    []TargetingRule   `json:"targeting_rules,omitempty"`
-	TrafficPercentage *int              `json:"traffic_percentage,omitempty"`
-	Description       string            `json:"description,omitempty"`
-	Tags              []string          `json:"tags,omitempty"`
-	Owner             string            `json:"owner,omitempty"`
-	Hypothesis        string            `json:"hypothesis,omitempty"`
+	Status            *ExperimentStatus  `json:"status,omitempty"`
+	Variants          *[]Variant         `json:"variants,omitempty"`
+	Overrides         *map[string]string `json:"overrides,omitempty"`
+	TargetingRules    *[]TargetingRule   `json:"targeting_rules,omitempty"`
+	TrafficPercentage *int               `json:"traffic_percentage,omitempty"`
+	Description       *string            `json:"description,omitempty"`
+	Tags              *[]string          `json:"tags,omitempty"`
+	Owner             *string            `json:"owner,omitempty"`
+	Hypothesis        *string            `json:"hypothesis,omitempty"`
 }
 
 type ListExperimentsResponse struct {
@@ -194,16 +194,32 @@ func (s *Server) updateExperiment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	exp := existing
-	exp.Status = req.Status
-	exp.Variants = req.Variants
-	exp.Overrides = req.Overrides
-	exp.TargetingRules = req.TargetingRules
-	exp.Description = req.Description
-	exp.Tags = req.Tags
-	exp.Owner = req.Owner
-	exp.Hypothesis = req.Hypothesis
+	if req.Status != nil {
+		exp.Status = *req.Status
+	}
+	if req.Variants != nil {
+		exp.Variants = *req.Variants
+	}
+	if req.Overrides != nil {
+		exp.Overrides = *req.Overrides
+	}
+	if req.TargetingRules != nil {
+		exp.TargetingRules = *req.TargetingRules
+	}
 	if req.TrafficPercentage != nil {
 		exp.TrafficPercentage = *req.TrafficPercentage
+	}
+	if req.Description != nil {
+		exp.Description = *req.Description
+	}
+	if req.Tags != nil {
+		exp.Tags = *req.Tags
+	}
+	if req.Owner != nil {
+		exp.Owner = *req.Owner
+	}
+	if req.Hypothesis != nil {
+		exp.Hypothesis = *req.Hypothesis
 	}
 
 	if err := s.experimentStore.Update(exp); err != nil {
