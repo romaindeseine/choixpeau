@@ -31,7 +31,7 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 - **Assignment** — the result of an assignment: maps a `user_id` to a `variant` for a given `experiment`.
 - **Override** — forced assignment of a `user_id` to a specific variant, takes priority over hash and targeting.
 - **Targeting Rule** — condition on user attributes that must be met for assignment. Each rule has an `attribute`, an `operator` (`in`, `not_in`), and `values`. All rules use AND logic. Overrides bypass targeting.
-- **Exclusion Percentage** — percentage of eligible users to exclude (0-100, default 0). Evaluated after targeting rules, before variant assignment. Uses a deterministic hash independent from variant selection. Overrides bypass exclusion percentage.
+- **Traffic Percentage** — percentage of eligible traffic to include (0-100, default 100). Evaluated after targeting rules, before variant assignment. Uses a deterministic hash independent from variant selection. Overrides bypass traffic percentage.
 - **Seed** — salt used for deterministic hashing (defaults to the experiment slug).
 
 ## Code structure
@@ -39,6 +39,7 @@ Open-source, minimalist A/B cohort assignment as a single downloadable binary. W
 Flat layout — all Go files at the root in `package pearcut`, one file per responsibility:
 
 - `model.go` — domain structs (Experiment, Variant, Assignment, AssignmentEvent), interfaces (ExperimentStore, AssignReader, AssignWriter, AssignStore, Engine, EventPublisher)
+- `helpers.go` — generic utilities (Ptr)
 - `errors.go` — sentinel errors
 - `validate.go` — validation methods on Experiment
 - `engine.go` — assignment engine (lookup, overrides, targeting evaluation, hash-based variant selection, event publishing)
