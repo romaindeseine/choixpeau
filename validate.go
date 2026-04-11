@@ -21,7 +21,7 @@ func (e Experiment) Validate() error {
 	if err := e.validateTargetingRules(); err != nil {
 		return err
 	}
-	if err := e.validateExclusionPercentage(); err != nil {
+	if err := e.validateTrafficPercentage(); err != nil {
 		return err
 	}
 	return nil
@@ -90,9 +90,9 @@ func (e Experiment) validateTargetingRules() error {
 	return nil
 }
 
-func (e Experiment) validateExclusionPercentage() error {
-	if e.ExclusionPercentage < 0 || e.ExclusionPercentage > 100 {
-		return fmt.Errorf("experiment %q has invalid exclusion_percentage %d (must be 0-100)", e.Slug, e.ExclusionPercentage)
+func (e Experiment) validateTrafficPercentage() error {
+	if e.TrafficPercentage < 0 || e.TrafficPercentage > 100 {
+		return fmt.Errorf("experiment %q has invalid traffic_percentage %d (must be 0-100)", e.Slug, e.TrafficPercentage)
 	}
 	return nil
 }

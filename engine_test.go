@@ -14,9 +14,10 @@ func newTestAssignReader(t *testing.T, experiments []Experiment) AssignReader {
 
 func TestEngineAssign(t *testing.T) {
 	runningExp := Experiment{
-		Slug:   "exp-1",
-		Seed:   "exp-1",
-		Status: StatusRunning,
+		Slug:              "exp-1",
+		Seed:              "exp-1",
+		Status:            StatusRunning,
+		TrafficPercentage: 100,
 		Variants: []Variant{
 			{Name: "control", Weight: 50},
 			{Name: "treatment", Weight: 50},
@@ -87,7 +88,7 @@ func TestEngineAssign(t *testing.T) {
 		},
 		{
 			name:        "single variant always assigned",
-			exps:        []Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, Variants: []Variant{{Name: "only", Weight: 100}}}},
+			exps:        []Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, TrafficPercentage: 100, Variants: []Variant{{Name: "only", Weight: 100}}}},
 			slug:        "single",
 			userID:      "user-1",
 			wantVariant: "only",
@@ -101,10 +102,11 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "targeting match",
 			exps: []Experiment{{
-				Slug:     "targeted",
-				Seed:     "targeted",
-				Status:   StatusRunning,
-				Variants: []Variant{{Name: "control", Weight: 100}},
+				Slug:              "targeted",
+				Seed:              "targeted",
+				Status:            StatusRunning,
+				TrafficPercentage: 100,
+				Variants:          []Variant{{Name: "control", Weight: 100}},
 				TargetingRules: []TargetingRule{
 					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR", "US"}},
 				},
@@ -164,37 +166,38 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "traffic_percentage 100 assigns normally",
 			exps: []Experiment{{
-				Slug:     "traffic-100",
-				Seed:     "traffic-100",
-				Status:   StatusRunning,
-				Variants: []Variant{{Name: "control", Weight: 100}},
+				Slug:              "traffic-100",
+				Seed:              "traffic-100",
+				Status:            StatusRunning,
+				TrafficPercentage: 100,
+				Variants:          []Variant{{Name: "control", Weight: 100}},
 			}},
 			slug:        "traffic-100",
 			userID:      "user-1",
 			wantVariant: "control",
 		},
 		{
-			name: "exclusion_percentage excludes user",
+			name: "traffic_percentage 1 excludes most users",
 			exps: []Experiment{{
-				Slug:                "traffic-excl",
-				Seed:                "traffic-excl",
-				Status:              StatusRunning,
-				Variants:            []Variant{{Name: "control", Weight: 100}},
-				ExclusionPercentage: 99,
+				Slug:              "traffic-excl",
+				Seed:              "traffic-excl",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "control", Weight: 100}},
+				TrafficPercentage: 1,
 			}},
 			slug:    "traffic-excl",
 			userID:  "user-excluded-test",
 			wantErr: ErrUserExcludedByTraffic,
 		},
 		{
-			name: "override bypasses exclusion percentage",
+			name: "override bypasses traffic percentage",
 			exps: []Experiment{{
-				Slug:                "traffic-override",
-				Seed:                "traffic-override",
-				Status:              StatusRunning,
-				Variants:            []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-				Overrides:           map[string]string{"user-42": "treatment"},
-				ExclusionPercentage: 99,
+				Slug:              "traffic-override",
+				Seed:              "traffic-override",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+				Overrides:         map[string]string{"user-42": "treatment"},
+				TrafficPercentage: 1,
 			}},
 			slug:        "traffic-override",
 			userID:      "user-42",
@@ -236,10 +239,11 @@ func TestEngineAssign(t *testing.T) {
 
 func TestEngineAssignDeterminism(t *testing.T) {
 	reader := newTestAssignReader(t, []Experiment{{
-		Slug:     "det-exp",
-		Seed:     "det-exp",
-		Status:   StatusRunning,
-		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
+		Slug:              "det-exp",
+		Seed:              "det-exp",
+		Status:            StatusRunning,
+		TrafficPercentage: 100,
+		Variants:          []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}})
 	e := NewEngine(reader, nil)
 
@@ -261,10 +265,11 @@ func TestEngineAssignDeterminism(t *testing.T) {
 
 func TestEngineAssignDistribution(t *testing.T) {
 	reader := newTestAssignReader(t, []Experiment{{
-		Slug:     "dist-exp",
-		Seed:     "dist-exp",
-		Status:   StatusRunning,
-		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+		Slug:              "dist-exp",
+		Seed:              "dist-exp",
+		Status:            StatusRunning,
+		TrafficPercentage: 100,
+		Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 	}})
 	e := NewEngine(reader, nil)
 
@@ -286,13 +291,13 @@ func TestEngineAssignDistribution(t *testing.T) {
 	}
 }
 
-func TestEngineExclusionPercentageDistribution(t *testing.T) {
+func TestEngineTrafficPercentageDistribution(t *testing.T) {
 	reader := newTestAssignReader(t, []Experiment{{
-		Slug:                "traffic-dist",
-		Seed:                "traffic-dist",
-		Status:              StatusRunning,
-		Variants:            []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-		ExclusionPercentage: 80,
+		Slug:              "traffic-dist",
+		Seed:              "traffic-dist",
+		Status:            StatusRunning,
+		Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+		TrafficPercentage: 20,
 	}})
 	e := NewEngine(reader, nil)
 
@@ -315,8 +320,8 @@ func TestEngineExclusionPercentageDistribution(t *testing.T) {
 
 func TestEngineBulkAssign(t *testing.T) {
 	allExps := []Experiment{
-		{Slug: "running-1", Seed: "running-1", Status: StatusRunning, Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}}},
-		{Slug: "running-2", Seed: "running-2", Status: StatusRunning, Variants: []Variant{{Name: "a", Weight: 100}}},
+		{Slug: "running-1", Seed: "running-1", Status: StatusRunning, TrafficPercentage: 100, Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}}},
+		{Slug: "running-2", Seed: "running-2", Status: StatusRunning, TrafficPercentage: 100, Variants: []Variant{{Name: "a", Weight: 100}}},
 		{Slug: "draft-exp", Seed: "draft-exp", Status: StatusDraft, Variants: []Variant{{Name: "control", Weight: 100}}},
 		{Slug: "paused-exp", Seed: "paused-exp", Status: StatusPaused, Variants: []Variant{{Name: "control", Weight: 100}}},
 	}
@@ -359,16 +364,17 @@ func TestEngineBulkAssign(t *testing.T) {
 			wantSlugs: nil,
 		},
 		{
-			name: "exclusion percentage skips excluded experiments",
+			name: "traffic percentage skips excluded experiments",
 			exps: []Experiment{
 				{
 					Slug: "traffic-zero", Seed: "traffic-zero", Status: StatusRunning,
-					Variants:            []Variant{{Name: "control", Weight: 100}},
-					ExclusionPercentage: 99, // near-total exclusion
+					Variants:          []Variant{{Name: "control", Weight: 100}},
+					TrafficPercentage: 1, // near-zero traffic
 				},
 				{
 					Slug: "traffic-full", Seed: "traffic-full", Status: StatusRunning,
-					Variants: []Variant{{Name: "control", Weight: 100}},
+					Variants:          []Variant{{Name: "control", Weight: 100}},
+					TrafficPercentage: 100,
 				},
 			},
 			slugs:     nil,
@@ -379,12 +385,14 @@ func TestEngineBulkAssign(t *testing.T) {
 			exps: []Experiment{
 				{
 					Slug: "targeted", Seed: "targeted", Status: StatusRunning,
-					Variants:       []Variant{{Name: "control", Weight: 100}},
-					TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+					Variants:          []Variant{{Name: "control", Weight: 100}},
+					TrafficPercentage: 100,
+					TargetingRules:    []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
 				},
 				{
 					Slug: "untargeted", Seed: "untargeted", Status: StatusRunning,
-					Variants: []Variant{{Name: "control", Weight: 100}},
+					Variants:          []Variant{{Name: "control", Weight: 100}},
+					TrafficPercentage: 100,
 				},
 			},
 			slugs:      nil,
@@ -421,10 +429,11 @@ func TestEngineBulkAssign(t *testing.T) {
 
 func TestEngineAssignSeedOverride(t *testing.T) {
 	baseExp := Experiment{
-		Slug:     "seed-exp",
-		Seed:     "seed-exp",
-		Status:   StatusRunning,
-		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
+		Slug:              "seed-exp",
+		Seed:              "seed-exp",
+		Status:            StatusRunning,
+		TrafficPercentage: 100,
+		Variants:          []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}
 
 	expWithSeed := baseExp

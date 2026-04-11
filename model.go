@@ -41,7 +41,7 @@ type Experiment struct {
 	Overrides           map[string]string `json:"overrides,omitempty"`
 	Seed                string            `json:"seed,omitempty"`
 	TargetingRules      []TargetingRule   `json:"targeting_rules,omitempty"`
-	ExclusionPercentage int               `json:"exclusion_percentage"`
+	TrafficPercentage   int               `json:"traffic_percentage"`
 	Description         string            `json:"description,omitempty"`
 	Tags                []string          `json:"tags,omitempty"`
 	Owner               string            `json:"owner,omitempty"`
