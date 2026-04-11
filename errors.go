@@ -7,5 +7,5 @@ var (
 	ErrExperimentNotRunning  = errors.New("experiment not running")
 	ErrExperimentExists      = errors.New("experiment already exists")
 	ErrUserNotTargeted       = errors.New("user does not match targeting rules")
-	ErrUserExcludedByTraffic = errors.New("user excluded by exclusion percentage")
+	ErrUserExcludedByTraffic = errors.New("user excluded by traffic percentage")
 )
