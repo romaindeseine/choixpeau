@@ -47,6 +47,6 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/v1/experiments", s.listExperiments)
 	mux.HandleFunc("GET /admin/v1/experiments/{slug}", s.getExperiment)
 	mux.HandleFunc("POST /admin/v1/experiments", s.createExperiment)
-	mux.HandleFunc("PUT /admin/v1/experiments/{slug}", s.updateExperiment)
+	mux.HandleFunc("PATCH /admin/v1/experiments/{slug}", s.updateExperiment)
 	mux.HandleFunc("DELETE /admin/v1/experiments/{slug}", s.deleteExperiment)
 }

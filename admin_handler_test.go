@@ -348,6 +348,7 @@ func TestUpdateExperiment(t *testing.T) {
 		body       string
 		store      *mockStore
 		wantStatus int
+		wantExp    *Experiment
 	}{
 		{
 			name: "success",
@@ -357,6 +358,7 @@ func TestUpdateExperiment(t *testing.T) {
 				"exp-a": {Slug: "exp-a", Status: StatusDraft, Variants: []Variant{{Name: "control", Weight: 1}}},
 			}},
 			wantStatus: http.StatusOK,
+			wantExp:    &Experiment{Slug: "exp-a", Status: StatusRunning, Variants: []Variant{{Name: "control", Weight: 1}}},
 		},
 		{
 			name:       "not found",
@@ -373,6 +375,29 @@ func TestUpdateExperiment(t *testing.T) {
 				"exp-a": {Slug: "exp-a", Status: StatusDraft},
 			}},
 			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "partial update preserves unset fields",
+			slug: "exp-a",
+			body: `{"description":"new desc"}`,
+			store: &mockStore{experiments: map[string]Experiment{
+				"exp-a": {
+					Slug:              "exp-a",
+					Status:            StatusRunning,
+					Variants:          []Variant{{Name: "control", Weight: 1}},
+					TrafficPercentage: 50,
+					Owner:             "alice",
+				},
+			}},
+			wantStatus: http.StatusOK,
+			wantExp: &Experiment{
+				Slug:              "exp-a",
+				Status:            StatusRunning,
+				Variants:          []Variant{{Name: "control", Weight: 1}},
+				TrafficPercentage: 50,
+				Owner:             "alice",
+				Description:       "new desc",
+			},
 		},
 		{
 			name: "validation error",
@@ -392,9 +417,9 @@ func TestUpdateExperiment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := newTestServer(tt.store)
 			mux := http.NewServeMux()
-			mux.HandleFunc("PUT /admin/v1/experiments/{slug}", srv.updateExperiment)
+			mux.HandleFunc("PATCH /admin/v1/experiments/{slug}", srv.updateExperiment)
 
-			req := httptest.NewRequest(http.MethodPut, "/admin/v1/experiments/"+tt.slug, strings.NewReader(tt.body))
+			req := httptest.NewRequest(http.MethodPatch, "/admin/v1/experiments/"+tt.slug, strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
@@ -404,13 +429,33 @@ func TestUpdateExperiment(t *testing.T) {
 				t.Fatalf("expected status %d, got %d; body: %s", tt.wantStatus, w.Code, w.Body.String())
 			}
 
-			if tt.wantStatus == http.StatusOK {
-				var exp Experiment
-				if err := json.NewDecoder(w.Body).Decode(&exp); err != nil {
+			if tt.wantExp != nil {
+				var got Experiment
+				if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
 					t.Fatalf("invalid json: %v", err)
 				}
-				if exp.Slug != tt.slug {
-					t.Fatalf("expected slug %s, got %s", tt.slug, exp.Slug)
+				if got.Slug != tt.wantExp.Slug {
+					t.Fatalf("expected slug %s, got %s", tt.wantExp.Slug, got.Slug)
+				}
+				if got.Status != tt.wantExp.Status {
+					t.Fatalf("expected status %s, got %s", tt.wantExp.Status, got.Status)
+				}
+				if len(got.Variants) != len(tt.wantExp.Variants) {
+					t.Fatalf("expected %d variants, got %d", len(tt.wantExp.Variants), len(got.Variants))
+				}
+				for i, v := range tt.wantExp.Variants {
+					if got.Variants[i].Name != v.Name || got.Variants[i].Weight != v.Weight {
+						t.Fatalf("variant %d: expected %+v, got %+v", i, v, got.Variants[i])
+					}
+				}
+				if got.TrafficPercentage != tt.wantExp.TrafficPercentage {
+					t.Fatalf("expected traffic_percentage %d, got %d", tt.wantExp.TrafficPercentage, got.TrafficPercentage)
+				}
+				if got.Description != tt.wantExp.Description {
+					t.Fatalf("expected description %q, got %q", tt.wantExp.Description, got.Description)
+				}
+				if got.Owner != tt.wantExp.Owner {
+					t.Fatalf("expected owner %q, got %q", tt.wantExp.Owner, got.Owner)
 				}
 			}
 		})
