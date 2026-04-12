@@ -382,21 +382,21 @@ func TestUpdateExperiment(t *testing.T) {
 			body: `{"description":"new desc"}`,
 			store: &mockStore{experiments: map[string]Experiment{
 				"exp-a": {
-					Slug:              "exp-a",
-					Status:            StatusRunning,
-					Variants:          []Variant{{Name: "control", Weight: 1}},
-					TrafficPercentage: 50,
-					Owner:             "alice",
+					Slug:     "exp-a",
+					Status:   StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 1}},
+					Layer:    Layer{Name: "checkout", From: 0, To: 50},
+					Owner:    "alice",
 				},
 			}},
 			wantStatus: http.StatusOK,
 			wantExp: &Experiment{
-				Slug:              "exp-a",
-				Status:            StatusRunning,
-				Variants:          []Variant{{Name: "control", Weight: 1}},
-				TrafficPercentage: 50,
-				Owner:             "alice",
-				Description:       "new desc",
+				Slug:        "exp-a",
+				Status:      StatusRunning,
+				Variants:    []Variant{{Name: "control", Weight: 1}},
+				Layer:       Layer{Name: "checkout", From: 0, To: 50},
+				Owner:       "alice",
+				Description: "new desc",
 			},
 		},
 		{
@@ -448,8 +448,8 @@ func TestUpdateExperiment(t *testing.T) {
 						t.Fatalf("variant %d: expected %+v, got %+v", i, v, got.Variants[i])
 					}
 				}
-				if got.TrafficPercentage != tt.wantExp.TrafficPercentage {
-					t.Fatalf("expected traffic_percentage %d, got %d", tt.wantExp.TrafficPercentage, got.TrafficPercentage)
+				if got.Layer != tt.wantExp.Layer {
+					t.Fatalf("expected layer %+v, got %+v", tt.wantExp.Layer, got.Layer)
 				}
 				if got.Description != tt.wantExp.Description {
 					t.Fatalf("expected description %q, got %q", tt.wantExp.Description, got.Description)

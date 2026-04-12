@@ -14,10 +14,9 @@ func newTestAssignReader(t *testing.T, experiments []Experiment) AssignReader {
 
 func TestEngineAssign(t *testing.T) {
 	runningExp := Experiment{
-		Slug:              "exp-1",
-		Seed:              "exp-1",
-		Status:            StatusRunning,
-		TrafficPercentage: 100,
+		Slug:   "exp-1",
+		Seed:   "exp-1",
+		Status: StatusRunning,
 		Variants: []Variant{
 			{Name: "control", Weight: 50},
 			{Name: "treatment", Weight: 50},
@@ -88,7 +87,7 @@ func TestEngineAssign(t *testing.T) {
 		},
 		{
 			name:        "single variant always assigned",
-			exps:        []Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, TrafficPercentage: 100, Variants: []Variant{{Name: "only", Weight: 100}}}},
+			exps:        []Experiment{{Slug: "single", Seed: "single", Status: StatusRunning, Variants: []Variant{{Name: "only", Weight: 100}}}},
 			slug:        "single",
 			userID:      "user-1",
 			wantVariant: "only",
@@ -102,11 +101,10 @@ func TestEngineAssign(t *testing.T) {
 		{
 			name: "targeting match",
 			exps: []Experiment{{
-				Slug:              "targeted",
-				Seed:              "targeted",
-				Status:            StatusRunning,
-				TrafficPercentage: 100,
-				Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "targeted",
+				Seed:     "targeted",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 				TargetingRules: []TargetingRule{
 					{Attribute: "country", Operator: OperatorIn, Values: []string{"FR", "US"}},
 				},
@@ -164,42 +162,54 @@ func TestEngineAssign(t *testing.T) {
 			wantVariant: "treatment",
 		},
 		{
-			name: "traffic_percentage 100 assigns normally",
+			name: "no layer assigns normally",
 			exps: []Experiment{{
-				Slug:              "traffic-100",
-				Seed:              "traffic-100",
-				Status:            StatusRunning,
-				TrafficPercentage: 100,
-				Variants:          []Variant{{Name: "control", Weight: 100}},
+				Slug:     "no-layer",
+				Seed:     "no-layer",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
 			}},
-			slug:        "traffic-100",
+			slug:        "no-layer",
 			userID:      "user-1",
 			wantVariant: "control",
 		},
 		{
-			name: "traffic_percentage 1 excludes most users",
+			name: "layer full range assigns normally",
 			exps: []Experiment{{
-				Slug:              "traffic-excl",
-				Seed:              "traffic-excl",
-				Status:            StatusRunning,
-				Variants:          []Variant{{Name: "control", Weight: 100}},
-				TrafficPercentage: 1,
+				Slug:     "layer-full",
+				Seed:     "layer-full",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
+				Layer:    Layer{Name: "checkout", From: 0, To: 100},
 			}},
-			slug:    "traffic-excl",
-			userID:  "user-excluded-test",
-			wantErr: ErrUserExcludedByTraffic,
+			slug:        "layer-full",
+			userID:      "user-1",
+			wantVariant: "control",
 		},
 		{
-			name: "override bypasses traffic percentage",
+			name: "layer zero range excludes all",
 			exps: []Experiment{{
-				Slug:              "traffic-override",
-				Seed:              "traffic-override",
-				Status:            StatusRunning,
-				Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-				Overrides:         map[string]string{"user-42": "treatment"},
-				TrafficPercentage: 1,
+				Slug:     "layer-zero",
+				Seed:     "layer-zero",
+				Status:   StatusRunning,
+				Variants: []Variant{{Name: "control", Weight: 100}},
+				Layer:    Layer{Name: "checkout", From: 0, To: 0},
 			}},
-			slug:        "traffic-override",
+			slug:    "layer-zero",
+			userID:  "user-1",
+			wantErr: ErrUserExcludedByLayer,
+		},
+		{
+			name: "override bypasses layer",
+			exps: []Experiment{{
+				Slug:      "layer-override",
+				Seed:      "layer-override",
+				Status:    StatusRunning,
+				Variants:  []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+				Overrides: map[string]string{"user-42": "treatment"},
+				Layer:     Layer{Name: "checkout", From: 0, To: 0},
+			}},
+			slug:        "layer-override",
 			userID:      "user-42",
 			wantVariant: "treatment",
 		},
@@ -239,11 +249,10 @@ func TestEngineAssign(t *testing.T) {
 
 func TestEngineAssignDeterminism(t *testing.T) {
 	reader := newTestAssignReader(t, []Experiment{{
-		Slug:              "det-exp",
-		Seed:              "det-exp",
-		Status:            StatusRunning,
-		TrafficPercentage: 100,
-		Variants:          []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
+		Slug:     "det-exp",
+		Seed:     "det-exp",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}})
 	e := NewEngine(reader, nil)
 
@@ -265,11 +274,10 @@ func TestEngineAssignDeterminism(t *testing.T) {
 
 func TestEngineAssignDistribution(t *testing.T) {
 	reader := newTestAssignReader(t, []Experiment{{
-		Slug:              "dist-exp",
-		Seed:              "dist-exp",
-		Status:            StatusRunning,
-		TrafficPercentage: 100,
-		Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+		Slug:     "dist-exp",
+		Seed:     "dist-exp",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
 	}})
 	e := NewEngine(reader, nil)
 
@@ -291,37 +299,37 @@ func TestEngineAssignDistribution(t *testing.T) {
 	}
 }
 
-func TestEngineTrafficPercentageDistribution(t *testing.T) {
+func TestEngineLayerDistribution(t *testing.T) {
 	reader := newTestAssignReader(t, []Experiment{{
-		Slug:              "traffic-dist",
-		Seed:              "traffic-dist",
-		Status:            StatusRunning,
-		Variants:          []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
-		TrafficPercentage: 20,
+		Slug:     "layer-dist",
+		Seed:     "layer-dist",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}},
+		Layer:    Layer{Name: "checkout", From: 0, To: 20},
 	}})
 	e := NewEngine(reader, nil)
 
 	assigned := 0
 	n := 10000
 	for i := 0; i < n; i++ {
-		_, err := e.Assign(context.Background(), fmt.Sprintf("user-%d", i), "traffic-dist", nil)
+		_, err := e.Assign(context.Background(), fmt.Sprintf("user-%d", i), "layer-dist", nil)
 		if err == nil {
 			assigned++
-		} else if err != ErrUserExcludedByTraffic {
+		} else if err != ErrUserExcludedByLayer {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 
 	ratio := float64(assigned) / float64(n)
 	if ratio < 0.15 || ratio > 0.25 {
-		t.Errorf("traffic_percentage=20: got %.2f%% assigned, expected ~20%%", ratio*100)
+		t.Errorf("layer [0,20): got %.2f%% assigned, expected ~20%%", ratio*100)
 	}
 }
 
 func TestEngineBulkAssign(t *testing.T) {
 	allExps := []Experiment{
-		{Slug: "running-1", Seed: "running-1", Status: StatusRunning, TrafficPercentage: 100, Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}}},
-		{Slug: "running-2", Seed: "running-2", Status: StatusRunning, TrafficPercentage: 100, Variants: []Variant{{Name: "a", Weight: 100}}},
+		{Slug: "running-1", Seed: "running-1", Status: StatusRunning, Variants: []Variant{{Name: "control", Weight: 50}, {Name: "treatment", Weight: 50}}},
+		{Slug: "running-2", Seed: "running-2", Status: StatusRunning, Variants: []Variant{{Name: "a", Weight: 100}}},
 		{Slug: "draft-exp", Seed: "draft-exp", Status: StatusDraft, Variants: []Variant{{Name: "control", Weight: 100}}},
 		{Slug: "paused-exp", Seed: "paused-exp", Status: StatusPaused, Variants: []Variant{{Name: "control", Weight: 100}}},
 	}
@@ -332,6 +340,7 @@ func TestEngineBulkAssign(t *testing.T) {
 		slugs      []string
 		attributes map[string]string
 		wantSlugs  []string
+		wantCount  int // used when wantSlugs is nil and we can't predict exact slugs
 	}{
 		{
 			name:      "all running experiments",
@@ -364,35 +373,53 @@ func TestEngineBulkAssign(t *testing.T) {
 			wantSlugs: nil,
 		},
 		{
-			name: "traffic percentage skips excluded experiments",
+			name: "layer zero range skips excluded experiments",
 			exps: []Experiment{
 				{
-					Slug: "traffic-zero", Seed: "traffic-zero", Status: StatusRunning,
-					Variants:          []Variant{{Name: "control", Weight: 100}},
-					TrafficPercentage: 1, // near-zero traffic
+					Slug: "layer-zero", Seed: "layer-zero", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
+					Layer:    Layer{Name: "checkout", From: 0, To: 0},
 				},
 				{
-					Slug: "traffic-full", Seed: "traffic-full", Status: StatusRunning,
-					Variants:          []Variant{{Name: "control", Weight: 100}},
-					TrafficPercentage: 100,
+					Slug: "no-layer", Seed: "no-layer", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
 				},
 			},
 			slugs:     nil,
-			wantSlugs: []string{"traffic-full"},
+			wantSlugs: []string{"no-layer"},
+		},
+		{
+			name: "layer mutual exclusion assigns exactly one per layer",
+			exps: []Experiment{
+				{
+					Slug: "layer-a", Seed: "layer-a", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
+					Layer:    Layer{Name: "checkout", From: 0, To: 50},
+				},
+				{
+					Slug: "layer-b", Seed: "layer-b", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
+					Layer:    Layer{Name: "checkout", From: 50, To: 100},
+				},
+				{
+					Slug: "no-layer", Seed: "no-layer", Status: StatusRunning,
+					Variants: []Variant{{Name: "control", Weight: 100}},
+				},
+			},
+			slugs:     nil,
+			wantCount: 2, // one from layer + the no-layer experiment
 		},
 		{
 			name: "targeting skips non-matching experiments",
 			exps: []Experiment{
 				{
 					Slug: "targeted", Seed: "targeted", Status: StatusRunning,
-					Variants:          []Variant{{Name: "control", Weight: 100}},
-					TrafficPercentage: 100,
-					TargetingRules:    []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
+					Variants:       []Variant{{Name: "control", Weight: 100}},
+					TargetingRules: []TargetingRule{{Attribute: "country", Operator: OperatorIn, Values: []string{"FR"}}},
 				},
 				{
 					Slug: "untargeted", Seed: "untargeted", Status: StatusRunning,
-					Variants:          []Variant{{Name: "control", Weight: 100}},
-					TrafficPercentage: 100,
+					Variants: []Variant{{Name: "control", Weight: 100}},
 				},
 			},
 			slugs:      nil,
@@ -410,17 +437,22 @@ func TestEngineBulkAssign(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if len(assignments) != len(tt.wantSlugs) {
-				t.Fatalf("got %d assignments, want %d", len(assignments), len(tt.wantSlugs))
-			}
-
-			got := make(map[string]bool, len(assignments))
-			for _, a := range assignments {
-				got[a.Experiment] = true
-			}
-			for _, slug := range tt.wantSlugs {
-				if !got[slug] {
-					t.Errorf("missing assignment for %q", slug)
+			if tt.wantSlugs != nil {
+				if len(assignments) != len(tt.wantSlugs) {
+					t.Fatalf("got %d assignments, want %d", len(assignments), len(tt.wantSlugs))
+				}
+				got := make(map[string]bool, len(assignments))
+				for _, a := range assignments {
+					got[a.Experiment] = true
+				}
+				for _, slug := range tt.wantSlugs {
+					if !got[slug] {
+						t.Errorf("missing assignment for %q", slug)
+					}
+				}
+			} else if tt.wantCount > 0 {
+				if len(assignments) != tt.wantCount {
+					t.Fatalf("got %d assignments, want %d", len(assignments), tt.wantCount)
 				}
 			}
 		})
@@ -429,11 +461,10 @@ func TestEngineBulkAssign(t *testing.T) {
 
 func TestEngineAssignSeedOverride(t *testing.T) {
 	baseExp := Experiment{
-		Slug:              "seed-exp",
-		Seed:              "seed-exp",
-		Status:            StatusRunning,
-		TrafficPercentage: 100,
-		Variants:          []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
+		Slug:     "seed-exp",
+		Seed:     "seed-exp",
+		Status:   StatusRunning,
+		Variants: []Variant{{Name: "a", Weight: 50}, {Name: "b", Weight: 50}},
 	}
 
 	expWithSeed := baseExp

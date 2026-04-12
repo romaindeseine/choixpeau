@@ -43,7 +43,7 @@ func (s *Server) assignHandler(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusNotFound, ErrorResponse{Error: "experiment not found"})
 		case errors.Is(err, ErrExperimentNotRunning):
 			writeJSON(w, http.StatusConflict, ErrorResponse{Error: "experiment not running"})
-		case errors.Is(err, ErrUserNotTargeted), errors.Is(err, ErrUserExcludedByTraffic):
+		case errors.Is(err, ErrUserNotTargeted), errors.Is(err, ErrUserExcludedByLayer):
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			slog.Error("assignment failed", "experiment", req.Experiment, "user_id", req.UserID, "error", err)

@@ -45,7 +45,7 @@ func (s *SQLiteStore) migrate() error {
 			tags        TEXT NOT NULL DEFAULT '[]',
 			owner       TEXT NOT NULL DEFAULT '',
 			hypothesis  TEXT NOT NULL DEFAULT '',
-			traffic_percentage INTEGER NOT NULL DEFAULT 100,
+			layer       TEXT NOT NULL DEFAULT '{}',
 			created_at  TEXT NOT NULL,
 			updated_at  TEXT NOT NULL
 		);
@@ -55,7 +55,7 @@ func (s *SQLiteStore) migrate() error {
 
 func (s *SQLiteStore) Get(slug string) (Experiment, error) {
 	row := s.db.QueryRow(
-		"SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, traffic_percentage, created_at, updated_at FROM experiments WHERE slug = ?",
+		"SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, layer, created_at, updated_at FROM experiments WHERE slug = ?",
 		slug,
 	)
 
@@ -78,7 +78,7 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 		return ExperimentListResult{}, fmt.Errorf("count experiments: %w", err)
 	}
 
-	query := "SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, traffic_percentage, created_at, updated_at FROM experiments" + where + " ORDER BY created_at DESC"
+	query := "SELECT slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, layer, created_at, updated_at FROM experiments" + where + " ORDER BY created_at DESC"
 	if opts.Page > 0 && opts.PerPage > 0 {
 		offset := (opts.Page - 1) * opts.PerPage
 		query += fmt.Sprintf(" LIMIT %d OFFSET %d", opts.PerPage, offset)
@@ -93,8 +93,8 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 	experiments := []Experiment{}
 	for rows.Next() {
 		var exp Experiment
-		var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
-		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &exp.TrafficPercentage, &createdAt, &updatedAt); err != nil {
+		var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, layerJSON, createdAt, updatedAt string
+		if err := rows.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &layerJSON, &createdAt, &updatedAt); err != nil {
 			return ExperimentListResult{}, fmt.Errorf("scan experiment: %w", err)
 		}
 		if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
@@ -108,6 +108,9 @@ func (s *SQLiteStore) List(filter ExperimentFilter, opts ListOptions) (Experimen
 		}
 		if err := json.Unmarshal([]byte(tagsJSON), &exp.Tags); err != nil {
 			return ExperimentListResult{}, fmt.Errorf("decode tags for %q: %w", exp.Slug, err)
+		}
+		if err := json.Unmarshal([]byte(layerJSON), &exp.Layer); err != nil {
+			return ExperimentListResult{}, fmt.Errorf("decode layer for %q: %w", exp.Slug, err)
 		}
 		exp.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		exp.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
@@ -167,13 +170,21 @@ func (s *SQLiteStore) Create(exp Experiment) error {
 	if err != nil {
 		return fmt.Errorf("encode tags: %w", err)
 	}
+	layerJSON, err := json.Marshal(exp.Layer)
+	if err != nil {
+		return fmt.Errorf("encode layer: %w", err)
+	}
+
+	if err := s.validateLayerTraffic(exp); err != nil {
+		return err
+	}
 
 	_, err = s.db.Exec(
-		"INSERT INTO experiments (slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, traffic_percentage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO experiments (slug, status, seed, variants, overrides, targeting_rules, description, tags, owner, hypothesis, layer, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		exp.Slug, string(exp.Status), exp.Seed,
 		string(variantsJSON), string(overridesJSON), string(targetingRulesJSON),
 		exp.Description, string(tagsJSON), exp.Owner, exp.Hypothesis,
-		exp.TrafficPercentage,
+		string(layerJSON),
 		exp.CreatedAt.Format(time.RFC3339), exp.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -212,13 +223,21 @@ func (s *SQLiteStore) Update(exp Experiment) error {
 	if err != nil {
 		return fmt.Errorf("encode tags: %w", err)
 	}
+	layerJSON, err := json.Marshal(exp.Layer)
+	if err != nil {
+		return fmt.Errorf("encode layer: %w", err)
+	}
+
+	if err := s.validateLayerTraffic(exp); err != nil {
+		return err
+	}
 
 	res, err := s.db.Exec(
-		"UPDATE experiments SET status = ?, seed = ?, variants = ?, overrides = ?, targeting_rules = ?, description = ?, tags = ?, owner = ?, hypothesis = ?, traffic_percentage = ?, updated_at = ? WHERE slug = ?",
+		"UPDATE experiments SET status = ?, seed = ?, variants = ?, overrides = ?, targeting_rules = ?, description = ?, tags = ?, owner = ?, hypothesis = ?, layer = ?, updated_at = ? WHERE slug = ?",
 		string(exp.Status), exp.Seed,
 		string(variantsJSON), string(overridesJSON), string(targetingRulesJSON),
 		exp.Description, string(tagsJSON), exp.Owner, exp.Hypothesis,
-		exp.TrafficPercentage,
+		string(layerJSON),
 		exp.UpdatedAt.Format(time.RFC3339), exp.Slug,
 	)
 	if err != nil {
@@ -248,8 +267,8 @@ func (s *SQLiteStore) Delete(slug string) error {
 
 func scanExperiment(row *sql.Row) (Experiment, error) {
 	var exp Experiment
-	var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, createdAt, updatedAt string
-	if err := row.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &exp.TrafficPercentage, &createdAt, &updatedAt); err != nil {
+	var variantsJSON, overridesJSON, targetingRulesJSON, tagsJSON, layerJSON, createdAt, updatedAt string
+	if err := row.Scan(&exp.Slug, &exp.Status, &exp.Seed, &variantsJSON, &overridesJSON, &targetingRulesJSON, &exp.Description, &tagsJSON, &exp.Owner, &exp.Hypothesis, &layerJSON, &createdAt, &updatedAt); err != nil {
 		return Experiment{}, err
 	}
 	if err := json.Unmarshal([]byte(variantsJSON), &exp.Variants); err != nil {
@@ -264,7 +283,40 @@ func scanExperiment(row *sql.Row) (Experiment, error) {
 	if err := json.Unmarshal([]byte(tagsJSON), &exp.Tags); err != nil {
 		return Experiment{}, fmt.Errorf("decode tags: %w", err)
 	}
+	if err := json.Unmarshal([]byte(layerJSON), &exp.Layer); err != nil {
+		return Experiment{}, fmt.Errorf("decode layer: %w", err)
+	}
 	exp.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	exp.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 	return exp, nil
+}
+
+func (s *SQLiteStore) validateLayerTraffic(exp Experiment) error {
+	if exp.Layer == (Layer{}) {
+		return nil
+	}
+
+	rows, err := s.db.Query(
+		"SELECT layer FROM experiments WHERE status = 'running' AND slug != ? AND layer != '{}'",
+		exp.Slug,
+	)
+	if err != nil {
+		return fmt.Errorf("query layer experiments: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var layerJSON string
+		if err := rows.Scan(&layerJSON); err != nil {
+			return fmt.Errorf("scan layer: %w", err)
+		}
+		var l Layer
+		if err := json.Unmarshal([]byte(layerJSON), &l); err != nil {
+			return fmt.Errorf("decode layer: %w", err)
+		}
+		if l.Name == exp.Layer.Name && exp.Layer.From < l.To && l.From < exp.Layer.To {
+			return ErrLayerRangesOverlap
+		}
+	}
+	return nil
 }

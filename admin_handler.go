@@ -17,29 +17,29 @@ func isValidStatus(s ExperimentStatus) bool {
 }
 
 type CreateExperimentRequest struct {
-	Slug              string            `json:"slug"`
-	Status            ExperimentStatus  `json:"status"`
-	Variants          []Variant         `json:"variants"`
-	Overrides         map[string]string `json:"overrides,omitempty"`
-	Seed              string            `json:"seed,omitempty"`
-	TargetingRules    []TargetingRule   `json:"targeting_rules,omitempty"`
-	TrafficPercentage *int              `json:"traffic_percentage,omitempty"`
-	Description       string            `json:"description,omitempty"`
-	Tags              []string          `json:"tags,omitempty"`
-	Owner             string            `json:"owner,omitempty"`
-	Hypothesis        string            `json:"hypothesis,omitempty"`
+	Slug           string            `json:"slug"`
+	Status         ExperimentStatus  `json:"status"`
+	Variants       []Variant         `json:"variants"`
+	Overrides      map[string]string `json:"overrides,omitempty"`
+	Seed           string            `json:"seed,omitempty"`
+	TargetingRules []TargetingRule   `json:"targeting_rules,omitempty"`
+	Layer          Layer             `json:"layer,omitempty"`
+	Description    string            `json:"description,omitempty"`
+	Tags           []string          `json:"tags,omitempty"`
+	Owner          string            `json:"owner,omitempty"`
+	Hypothesis     string            `json:"hypothesis,omitempty"`
 }
 
 type UpdateExperimentRequest struct {
-	Status            *ExperimentStatus  `json:"status,omitempty"`
-	Variants          *[]Variant         `json:"variants,omitempty"`
-	Overrides         *map[string]string `json:"overrides,omitempty"`
-	TargetingRules    *[]TargetingRule   `json:"targeting_rules,omitempty"`
-	TrafficPercentage *int               `json:"traffic_percentage,omitempty"`
-	Description       *string            `json:"description,omitempty"`
-	Tags              *[]string          `json:"tags,omitempty"`
-	Owner             *string            `json:"owner,omitempty"`
-	Hypothesis        *string            `json:"hypothesis,omitempty"`
+	Status         *ExperimentStatus  `json:"status,omitempty"`
+	Variants       *[]Variant         `json:"variants,omitempty"`
+	Overrides      *map[string]string `json:"overrides,omitempty"`
+	TargetingRules *[]TargetingRule   `json:"targeting_rules,omitempty"`
+	Layer          *Layer             `json:"layer,omitempty"`
+	Description    *string            `json:"description,omitempty"`
+	Tags           *[]string          `json:"tags,omitempty"`
+	Owner          *string            `json:"owner,omitempty"`
+	Hypothesis     *string            `json:"hypothesis,omitempty"`
 }
 
 type ListExperimentsResponse struct {
@@ -132,23 +132,18 @@ func (s *Server) createExperiment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trafficPercentage := 100
-	if req.TrafficPercentage != nil {
-		trafficPercentage = *req.TrafficPercentage
-	}
-
 	exp := Experiment{
-		Slug:              req.Slug,
-		Status:            req.Status,
-		Variants:          req.Variants,
-		Overrides:         req.Overrides,
-		Seed:              req.Seed,
-		TargetingRules:    req.TargetingRules,
-		TrafficPercentage: trafficPercentage,
-		Description:       req.Description,
-		Tags:              req.Tags,
-		Owner:             req.Owner,
-		Hypothesis:        req.Hypothesis,
+		Slug:           req.Slug,
+		Status:         req.Status,
+		Variants:       req.Variants,
+		Overrides:      req.Overrides,
+		Seed:           req.Seed,
+		TargetingRules: req.TargetingRules,
+		Layer:          req.Layer,
+		Description:    req.Description,
+		Tags:           req.Tags,
+		Owner:          req.Owner,
+		Hypothesis:     req.Hypothesis,
 	}
 
 	if err := s.experimentStore.Create(exp); err != nil {
@@ -206,8 +201,8 @@ func (s *Server) updateExperiment(w http.ResponseWriter, r *http.Request) {
 	if req.TargetingRules != nil {
 		exp.TargetingRules = *req.TargetingRules
 	}
-	if req.TrafficPercentage != nil {
-		exp.TrafficPercentage = *req.TrafficPercentage
+	if req.Layer != nil {
+		exp.Layer = *req.Layer
 	}
 	if req.Description != nil {
 		exp.Description = *req.Description
