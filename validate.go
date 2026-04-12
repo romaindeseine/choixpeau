@@ -97,8 +97,14 @@ func (e Experiment) validateLayer() error {
 	if e.Layer.Name == "" {
 		return fmt.Errorf("experiment %q has layer with empty name", e.Slug)
 	}
-	if e.Layer.TrafficPercentage < 0 || e.Layer.TrafficPercentage > 100 {
-		return fmt.Errorf("experiment %q has invalid layer traffic_percentage %d (must be 0-100)", e.Slug, e.Layer.TrafficPercentage)
+	if e.Layer.From < 0 || e.Layer.From > 100 {
+		return fmt.Errorf("experiment %q has invalid layer from %d (must be 0-100)", e.Slug, e.Layer.From)
+	}
+	if e.Layer.To < 0 || e.Layer.To > 100 {
+		return fmt.Errorf("experiment %q has invalid layer to %d (must be 0-100)", e.Slug, e.Layer.To)
+	}
+	if e.Layer.From > e.Layer.To {
+		return fmt.Errorf("experiment %q has invalid layer range [%d, %d) (from must be less than or equal to to)", e.Slug, e.Layer.From, e.Layer.To)
 	}
 	return nil
 }

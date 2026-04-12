@@ -305,7 +305,6 @@ func (s *SQLiteStore) validateLayerTraffic(exp Experiment) error {
 	}
 	defer rows.Close()
 
-	var sum int
 	for rows.Next() {
 		var layerJSON string
 		if err := rows.Scan(&layerJSON); err != nil {
@@ -315,13 +314,9 @@ func (s *SQLiteStore) validateLayerTraffic(exp Experiment) error {
 		if err := json.Unmarshal([]byte(layerJSON), &l); err != nil {
 			return fmt.Errorf("decode layer: %w", err)
 		}
-		if l.Name == exp.Layer.Name {
-			sum += l.TrafficPercentage
+		if l.Name == exp.Layer.Name && exp.Layer.From < l.To && l.From < exp.Layer.To {
+			return ErrLayerTrafficExceeded
 		}
-	}
-
-	if sum+exp.Layer.TrafficPercentage > 100 {
-		return ErrLayerTrafficExceeded
 	}
 	return nil
 }

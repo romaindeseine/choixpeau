@@ -35,8 +35,9 @@ type TargetingRule struct {
 }
 
 type Layer struct {
-	Name              string `json:"name"`
-	TrafficPercentage int    `json:"traffic_percentage"`
+	Name string `json:"name"`
+	From int    `json:"from"`
+	To   int    `json:"to"`
 }
 
 type Experiment struct {
