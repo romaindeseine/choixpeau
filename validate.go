@@ -21,7 +21,7 @@ func (e Experiment) Validate() error {
 	if err := e.validateTargetingRules(); err != nil {
 		return err
 	}
-	if err := e.validateTrafficPercentage(); err != nil {
+	if err := e.validateLayer(); err != nil {
 		return err
 	}
 	return nil
@@ -90,9 +90,15 @@ func (e Experiment) validateTargetingRules() error {
 	return nil
 }
 
-func (e Experiment) validateTrafficPercentage() error {
-	if e.TrafficPercentage < 0 || e.TrafficPercentage > 100 {
-		return fmt.Errorf("experiment %q has invalid traffic_percentage %d (must be 0-100)", e.Slug, e.TrafficPercentage)
+func (e Experiment) validateLayer() error {
+	if e.Layer == (Layer{}) {
+		return nil
+	}
+	if e.Layer.Name == "" {
+		return fmt.Errorf("experiment %q has layer with empty name", e.Slug)
+	}
+	if e.Layer.TrafficPercentage < 0 || e.Layer.TrafficPercentage > 100 {
+		return fmt.Errorf("experiment %q has invalid layer traffic_percentage %d (must be 0-100)", e.Slug, e.Layer.TrafficPercentage)
 	}
 	return nil
 }
