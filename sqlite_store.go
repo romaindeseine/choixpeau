@@ -315,7 +315,7 @@ func (s *SQLiteStore) validateLayerTraffic(exp Experiment) error {
 			return fmt.Errorf("decode layer: %w", err)
 		}
 		if l.Name == exp.Layer.Name && exp.Layer.From < l.To && l.From < exp.Layer.To {
-			return ErrLayerTrafficExceeded
+			return ErrLayerRangesOverlap
 		}
 	}
 	return nil

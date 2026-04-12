@@ -7,6 +7,6 @@ var (
 	ErrExperimentNotRunning  = errors.New("experiment not running")
 	ErrExperimentExists      = errors.New("experiment already exists")
 	ErrUserNotTargeted       = errors.New("user does not match targeting rules")
-	ErrUserExcludedByTraffic = errors.New("user excluded by traffic percentage")
-	ErrLayerTrafficExceeded  = errors.New("layer traffic percentage sum exceeds 100")
+	ErrUserExcludedByLayer  = errors.New("user excluded by layer")
+	ErrLayerRangesOverlap   = errors.New("layer ranges overlap")
 )

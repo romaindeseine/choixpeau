@@ -38,7 +38,7 @@ func (e *engine) Assign(ctx context.Context, userID string, experimentSlug strin
 		variant = v
 	} else {
 		if !isIncludedByLayer(exp, userID) {
-			return Assignment{}, ErrUserExcludedByTraffic
+			return Assignment{}, ErrUserExcludedByLayer
 		}
 
 		if !matchesTargeting(exp.TargetingRules, attributes) {

@@ -91,7 +91,7 @@ func TestAssignHandler(t *testing.T) {
 		{
 			name:       "user excluded by traffic",
 			body:       `{"experiment":"checkout-redesign","user_id":"u_123"}`,
-			engine:     &mockEngine{err: ErrUserExcludedByTraffic},
+			engine:     &mockEngine{err: ErrUserExcludedByLayer},
 			wantStatus: http.StatusNoContent,
 		},
 		{

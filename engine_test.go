@@ -197,7 +197,7 @@ func TestEngineAssign(t *testing.T) {
 			}},
 			slug:    "layer-zero",
 			userID:  "user-1",
-			wantErr: ErrUserExcludedByTraffic,
+			wantErr: ErrUserExcludedByLayer,
 		},
 		{
 			name: "override bypasses layer",
@@ -315,7 +315,7 @@ func TestEngineLayerDistribution(t *testing.T) {
 		_, err := e.Assign(context.Background(), fmt.Sprintf("user-%d", i), "layer-dist", nil)
 		if err == nil {
 			assigned++
-		} else if err != ErrUserExcludedByTraffic {
+		} else if err != ErrUserExcludedByLayer {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
