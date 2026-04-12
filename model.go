@@ -49,11 +49,11 @@ type Experiment struct {
 	TargetingRules []TargetingRule   `json:"targeting_rules,omitempty"`
 	Layer          Layer             `json:"layer,omitempty"`
 	Description    string            `json:"description,omitempty"`
-	Tags              []string          `json:"tags,omitempty"`
-	Owner             string            `json:"owner,omitempty"`
-	Hypothesis        string            `json:"hypothesis,omitempty"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
+	Tags           []string          `json:"tags,omitempty"`
+	Owner          string            `json:"owner,omitempty"`
+	Hypothesis     string            `json:"hypothesis,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 type ExperimentFilter struct {
